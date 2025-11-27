@@ -1,6 +1,5 @@
 "use client";
 import { useEffect, useState } from "react";
-import { useSearchParams } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -8,10 +7,12 @@ import { Clock, Home, ShoppingBag } from "lucide-react";
 import Link from "next/link";
 
 export default function OrderPending() {
-  const searchParams = useSearchParams();
   const [orderData, setOrderData] = useState(null);
+  const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
+    // Hanya berjalan di client side
+    const searchParams = new URLSearchParams(window.location.search);
     const order_id = searchParams.get("order_id");
 
     if (order_id) {
@@ -20,7 +21,26 @@ export default function OrderPending() {
         status: "pending",
       });
     }
-  }, [searchParams]);
+
+    setIsLoading(false);
+  }, []);
+
+  if (isLoading) {
+    return (
+      <div className="min-h-screen bg-gradient-to-b from-green-50 to-white flex items-center justify-center py-12">
+        <Card className="w-full max-w-md mx-4">
+          <CardContent className="pt-6">
+            <div className="text-center space-y-6">
+              <div className="w-20 h-20 bg-blue-100 rounded-full flex items-center justify-center mx-auto">
+                <Clock className="w-10 h-10 text-blue-600 animate-pulse" />
+              </div>
+              <p className="text-gray-600">Memuat informasi pesanan...</p>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-green-50 to-white flex items-center justify-center py-12">
