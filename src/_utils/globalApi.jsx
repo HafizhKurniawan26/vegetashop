@@ -623,30 +623,17 @@ const updateOrder = async (jwt, documentId, orderData) => {
   }
 };
 
-// Create order
 const createOrder = async (jwt, orderData) => {
   try {
-    console.log("🆕 CREATE ORDER API CALL");
-    console.log("Order Data:", JSON.stringify(orderData, null, 2));
-
     const response = await axiosClient.post(`/orders`, orderData, {
       headers: {
         Authorization: `Bearer ${jwt}`,
         "Content-Type": "application/json",
       },
     });
-
-    console.log("✅ CREATE ORDER SUCCESS:", response.data);
     return response.data;
   } catch (error) {
-    console.error("❌ CREATE ORDER ERROR:", error);
-    if (error.response) {
-      console.error("Response status:", error.response.status);
-      console.error("Response data:", error.response.data);
-      throw new Error(
-        error.response.data.error?.message || "Create order failed"
-      );
-    }
+    console.error("Error creating order:", error);
     throw error;
   }
 };

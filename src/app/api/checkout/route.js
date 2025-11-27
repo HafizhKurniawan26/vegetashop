@@ -1,6 +1,5 @@
 import { NextResponse } from "next/server";
 import midtransClient from "midtrans-client";
-import globalApi from "@/_utils/globalApi";
 
 export async function POST(request) {
   try {
@@ -70,7 +69,7 @@ export async function POST(request) {
     const stockCheckResults = await Promise.all(stockCheckPromises);
     console.log("✅ Stock check passed:", stockCheckResults);
 
-    // Simpan order ke Strapi v5 dengan status pending
+    // **PERBAIKAN: Gunakan users_permissions_user bukan user**
     const orderPayload = {
       data: {
         order_id: orderId,
@@ -82,7 +81,7 @@ export async function POST(request) {
         customer_phone: customerDetails.phone,
         shipping_address: customerDetails.shipping_address,
         items: items,
-        user: userId,
+        users_permissions_user: userId, // **INI YANG DIPERBAIKI**
         midtrans_transaction_id: null,
         payment_data: {
           payment_type: null,
@@ -97,8 +96,27 @@ export async function POST(request) {
       JSON.stringify(orderPayload, null, 2)
     );
 
-    // Gunakan globalApi untuk create order
-    const orderData = await globalApi.createOrder(jwt, orderPayload);
+    const orderResponse = await fetch(
+      `${process.env.NEXT_PUBLIC_STRAPI_API_URL}/api/orders`,
+      {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${jwt}`,
+        },
+        body: JSON.stringify(orderPayload),
+      }
+    );
+
+    if (!orderResponse.ok) {
+      const errorData = await orderResponse.json();
+      console.error("❌ Failed to create order:", errorData);
+      throw new Error(
+        "Gagal membuat order: " + (errorData.error?.message || "Unknown error")
+      );
+    }
+
+    const orderData = await orderResponse.json();
     console.log("✅ Order created successfully:", orderData);
 
     // Initialize Snap client
