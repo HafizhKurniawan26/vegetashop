@@ -53,6 +53,7 @@ export const useProducts = () => {
         })),
       };
     },
+    // staleTime: 5 * 60 * 1000, // 5 minutes
   });
 
   return {

@@ -80,7 +80,7 @@ export default function OrderFinishPage() {
         await new Promise((resolve) => setTimeout(resolve, 3000));
 
         const response = await fetch(
-          `http://localhost:1337/api/orders?filters[order_id][$eq]=${orderId}&populate=*`,
+          `${process.env.NEXT_PUBLIC_STRAPI_API_URL}/api/orders?filters[order_id][$eq]=${orderId}&populate=*`,
           {
             headers: {
               Authorization: `Bearer ${jwt}`,

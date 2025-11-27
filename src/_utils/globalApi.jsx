@@ -2,6 +2,11 @@ import axios from "axios";
 
 const axiosClient = axios.create({
   baseURL: `${process.env.NEXT_PUBLIC_STRAPI_API_URL}/api`,
+  headers: {
+    "ngrok-skip-browser-warning": "true",
+    "Content-Type": "application/json",
+    "User-Agent": "custom",
+  },
 });
 
 const getAllCategories = async () => {
@@ -255,22 +260,6 @@ const loginUser = async (identifier, password) => {
   }
 };
 
-const googleAuthCallback = async (accessToken) => {
-  try {
-    const response = await axiosClient.get(
-      `/auth/google/callback?access_token=${accessToken}`
-    );
-
-    console.log("Google authentication successful");
-    return response.data;
-  } catch (error) {
-    console.error("Google auth error:", error);
-    throw (
-      error.response?.data?.error?.message || "Google authentication failed"
-    );
-  }
-};
-
 const getUserCart = async (jwt, userId) => {
   try {
     const response = await axiosClient.get(
@@ -493,12 +482,107 @@ const getAllUsers = async (jwt) => {
   }
 };
 
+// Category CRUD operations
+const createCategory = async (jwt, categoryData) => {
+  try {
+    console.log("🆕 CREATE CATEGORY API CALL");
+    console.log("Category Data:", JSON.stringify(categoryData, null, 2));
+
+    const response = await axiosClient.post(`/categories`, categoryData, {
+      headers: {
+        Authorization: `Bearer ${jwt}`,
+        "Content-Type": "application/json",
+      },
+    });
+
+    console.log("✅ CREATE CATEGORY SUCCESS:", response.data);
+    return response.data;
+  } catch (error) {
+    console.error("❌ CREATE CATEGORY ERROR:", error);
+    if (error.response) {
+      console.error("Response status:", error.response.status);
+      console.error(
+        "Response data:",
+        JSON.stringify(error.response.data, null, 2)
+      );
+      throw new Error(
+        error.response.data.error?.message || "Create category failed"
+      );
+    }
+    throw error;
+  }
+};
+
+const updateCategory = async (jwt, documentId, categoryData) => {
+  try {
+    console.log("🔄 UPDATE CATEGORY API CALL");
+    console.log("Document ID:", documentId);
+    console.log("Category Data:", JSON.stringify(categoryData, null, 2));
+
+    const response = await axiosClient.put(
+      `/categories/${documentId}`,
+      categoryData,
+      {
+        headers: {
+          Authorization: `Bearer ${jwt}`,
+          "Content-Type": "application/json",
+        },
+      }
+    );
+
+    console.log("✅ UPDATE CATEGORY SUCCESS:", response.data);
+    return response.data;
+  } catch (error) {
+    console.error("❌ UPDATE CATEGORY ERROR:", error);
+    if (error.response) {
+      console.error("Response status:", error.response.status);
+      console.error(
+        "Response data:",
+        JSON.stringify(error.response.data, null, 2)
+      );
+      throw new Error(
+        error.response.data.error?.message || "Update category failed"
+      );
+    }
+    throw error;
+  }
+};
+
+const deleteCategory = async (jwt, documentId) => {
+  try {
+    console.log("🗑️ DELETE CATEGORY API CALL");
+    console.log("Document ID:", documentId);
+
+    const response = await axiosClient.delete(`/categories/${documentId}`, {
+      headers: {
+        Authorization: `Bearer ${jwt}`,
+      },
+    });
+
+    console.log("✅ DELETE CATEGORY SUCCESS:", response.data);
+    return response.data;
+  } catch (error) {
+    console.error("❌ DELETE CATEGORY ERROR:", error);
+    if (error.response) {
+      console.error("Response status:", error.response.status);
+      console.error("Response data:", error.response.data);
+
+      // Check if category has products
+      if (error.response.status === 400) {
+        throw new Error(
+          "Tidak dapat menghapus kategori yang masih memiliki produk"
+        );
+      }
+    }
+    throw error;
+  }
+};
+
 export default {
   getAllCategories,
   getProductsByCategory,
   registerUser,
   loginUser,
-  googleAuthCallback,
   searchProducts,
   getAllProducts,
   addToCart,
@@ -515,4 +599,7 @@ export default {
   getAllOrders,
   updateOrderStatus,
   getAllUsers,
+  createCategory,
+  updateCategory,
+  deleteCategory,
 };

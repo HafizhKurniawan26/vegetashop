@@ -22,7 +22,6 @@ export async function GET(request) {
       );
     }
 
-    // Redirect ke halaman finish dengan query params
     const redirectUrl = `${process.env.NEXT_PUBLIC_BASE_URL}/order/finish?order_id=${order_id}&transaction_status=${transaction_status}&status_code=${status_code}`;
 
     console.log(`🔀 Redirecting to: ${redirectUrl}`);
@@ -36,8 +35,6 @@ export async function GET(request) {
   }
 }
 
-// Handle POST request - ini sebenarnya tidak diperlukan karena sudah ada di /api/payment/notification
-// Tapi kita biarkan untuk backward compatibility
 export async function POST(request) {
   try {
     const body = await request.json();

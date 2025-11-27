@@ -38,6 +38,7 @@ import {
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
 import { Skeleton } from "@/components/ui/skeleton";
+import Image from "next/image";
 
 const ProductsTab = ({
   products,
@@ -125,6 +126,7 @@ const ProductsTab = ({
                   <th className="p-4 font-semibold text-left">Harga</th>
                   <th className="p-4 font-semibold text-center">Stok</th>
                   <th className="p-4 font-semibold text-center">Kategori</th>
+                  <th className="p-4 font-semibold text-center">Satuan</th>
                   <th className="p-4 font-semibold text-center">Status</th>
                   <th className="p-4 font-semibold text-center">Aksi</th>
                 </tr>
@@ -138,11 +140,14 @@ const ProductsTab = ({
                     <td className="p-4">
                       <div className="flex items-center gap-3">
                         {product.images && product.images.length > 0 && (
-                          <img
-                            src={`${
-                              process.env.NEXT_PUBLIC_STRAPI_API_URL +
-                              product.images[0].url
-                            }`}
+                          <Image
+                            width={48}
+                            height={48}
+                            src={
+                              product?.images?.[0]?.url?.startsWith("http")
+                                ? product.images[0].url
+                                : `${process.env.NEXT_PUBLIC_STRAPI_API_URL}${product.images[0].url}`
+                            }
                             alt={product.name}
                             className="w-12 h-12 object-cover rounded-lg border"
                           />
@@ -194,6 +199,14 @@ const ProductsTab = ({
                     </td>
                     <td className="p-4 text-center">
                       <Badge
+                        variant="outline"
+                        className="bg-gray-50 text-gray-700 border-gray-200"
+                      >
+                        {product.unit || "pcs"}
+                      </Badge>
+                    </td>
+                    <td className="p-4 text-center">
+                      <Badge
                         className={`
                           ${
                             product.stock > 10
@@ -211,6 +224,7 @@ const ProductsTab = ({
                           : "Habis"}
                       </Badge>
                     </td>
+
                     <td className="p-4 text-center">
                       <div className="flex gap-2 justify-center">
                         <TooltipProvider>

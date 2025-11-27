@@ -46,7 +46,6 @@ export default function CheckoutPage() {
       setUser(userObj);
       setCustomerPhone(userObj.phone || "");
 
-      // Set default address jika ada
       if (userObj.address) {
         setShippingAddress((prev) => ({
           ...prev,
@@ -58,7 +57,6 @@ export default function CheckoutPage() {
     }
   }, [router]);
 
-  // Query untuk cart items - Strapi v5 structure (tanpa attributes)
   const { data: cartData, isLoading } = useQuery({
     queryKey: ["cart", user?.id],
     queryFn: async () => {
@@ -70,7 +68,6 @@ export default function CheckoutPage() {
 
   const cartItems = cartData?.data || [];
 
-  // Mutation untuk checkout
   const checkoutMutation = useMutation({
     mutationFn: async (checkoutData) => {
       const response = await fetch("/api/checkout", {
@@ -89,7 +86,6 @@ export default function CheckoutPage() {
       return response.json();
     },
     onSuccess: (data) => {
-      // Redirect ke halaman pembayaran Midtrans
       window.location.href = data.redirect_url;
     },
     onError: (error) => {
@@ -97,7 +93,6 @@ export default function CheckoutPage() {
     },
   });
 
-  // Calculate totals - Strapi v5 structure (tanpa attributes)
   const totalPrice = cartItems.reduce((total, item) => {
     const product = item.product;
     const price = parseFloat(product?.price) || 0;
@@ -112,7 +107,6 @@ export default function CheckoutPage() {
   const shippingCost = totalPrice > 50000 ? 0 : 15000;
   const grandTotal = totalPrice + shippingCost;
 
-  // Cek apakah ada item yang stoknya habis - Strapi v5 structure (tanpa attributes)
   const hasOutOfStockItems = cartItems.some((item) => {
     const product = item.product;
     const quantity = parseInt(item.quantity) || 0;
@@ -142,9 +136,8 @@ export default function CheckoutPage() {
       const product = item.product;
       const quantity = parseInt(item.quantity) || 0;
 
-      // Gunakan documentId sebagai ID produk
       return {
-        id: product.documentId, // Gunakan documentId bukan id
+        id: product.documentId,
         name: product.name,
         price: product.price,
         quantity: quantity,
@@ -152,7 +145,6 @@ export default function CheckoutPage() {
       };
     });
 
-    // Tambah shipping cost sebagai item terpisah
     if (shippingCost > 0) {
       items.push({
         id: "shipping",
@@ -403,10 +395,11 @@ export default function CheckoutPage() {
                       >
                         <div className="w-12 h-12  rounded-lg flex items-center justify-center">
                           <Image
-                            src={`${
-                              process.env.NEXT_PUBLIC_STRAPI_API_URL +
-                                product.images?.[0]?.url || ""
-                            }`}
+                            src={
+                              product?.images?.[0]?.url?.startsWith("http")
+                                ? product.images[0].url
+                                : `${process.env.NEXT_PUBLIC_STRAPI_API_URL}${product.images[0].url}`
+                            }
                             width={45}
                             height={45}
                             alt={product?.name}

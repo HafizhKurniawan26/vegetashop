@@ -1,3 +1,4 @@
+"use client";
 import React, { useState } from "react";
 import {
   ShoppingCart,
@@ -146,7 +147,7 @@ const OrdersTab = ({
       doc.setFontSize(9);
       doc.setFont("helvetica", "normal");
       doc.text(`Generated: ${currentDateTime}`, 14, 50);
-      doc.text(`Toko Online Store - Professional Report`, 105, 50, {
+      doc.text(`Vegetashop - Professional Report`, 105, 50, {
         align: "center",
       });
       doc.text(

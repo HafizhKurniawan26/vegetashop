@@ -30,7 +30,7 @@ export async function POST(request) {
         console.log(`🔍 Checking stock for documentId: ${item.id}`);
 
         const productResponse = await fetch(
-          `http://localhost:1337/api/products?filters[documentId][$eq]=${item.id}&populate=*`,
+          `${process.env.NEXT_PUBLIC_STRAPI_API_URL}/api/products?filters[documentId][$eq]=${item.id}&populate=*`,
           {
             headers: {
               Authorization: `Bearer ${jwt}`,
@@ -91,14 +91,17 @@ export async function POST(request) {
       JSON.stringify(orderPayload, null, 2)
     );
 
-    const orderResponse = await fetch("http://localhost:1337/api/orders", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${jwt}`,
-      },
-      body: JSON.stringify(orderPayload),
-    });
+    const orderResponse = await fetch(
+      `${process.env.NEXT_PUBLIC_STRAPI_API_URL}/api/orders`,
+      {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${jwt}`,
+        },
+        body: JSON.stringify(orderPayload),
+      }
+    );
 
     if (!orderResponse.ok) {
       const errorText = await orderResponse.text();

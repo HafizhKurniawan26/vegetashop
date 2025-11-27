@@ -23,7 +23,7 @@ const Footer = () => {
     <footer className="bg-gradient-to-b from-gray-900 to-gray-950 text-white">
       {/* Main Footer */}
       <div className="container mx-auto px-4 py-12">
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
           {/* Company Info */}
           <div className="space-y-4">
             <div className="flex items-center gap-3">
@@ -76,51 +76,6 @@ const Footer = () => {
             </div>
           </div>
 
-          {/* Quick Links */}
-          <div className="space-y-4">
-            <h4 className="text-lg font-semibold text-green-400">
-              Tautan Cepat
-            </h4>
-            <div className="grid grid-cols-2 gap-2">
-              <Link
-                href="/"
-                className="text-gray-300 hover:text-green-400 transition-colors duration-200 py-1"
-              >
-                Beranda
-              </Link>
-              <Link
-                href="/products"
-                className="text-gray-300 hover:text-green-400 transition-colors duration-200 py-1"
-              >
-                Semua Produk
-              </Link>
-              <Link
-                href="/about"
-                className="text-gray-300 hover:text-green-400 transition-colors duration-200 py-1"
-              >
-                Tentang Kami
-              </Link>
-              <Link
-                href="/contact"
-                className="text-gray-300 hover:text-green-400 transition-colors duration-200 py-1"
-              >
-                Kontak
-              </Link>
-              <Link
-                href="/faq"
-                className="text-gray-300 hover:text-green-400 transition-colors duration-200 py-1"
-              >
-                FAQ
-              </Link>
-              <Link
-                href="/privacy"
-                className="text-gray-300 hover:text-green-400 transition-colors duration-200 py-1"
-              >
-                Kebijakan Privasi
-              </Link>
-            </div>
-          </div>
-
           {/* Categories */}
           <div className="space-y-4">
             <h4 className="text-lg font-semibold text-green-400">Kategori</h4>
@@ -139,27 +94,6 @@ const Footer = () => {
                 <div className="w-2 h-2 bg-green-500 rounded-full"></div>
                 Buah-buahan
               </Link>
-              <Link
-                href="/category/organik"
-                className="flex items-center gap-2 text-gray-300 hover:text-green-400 transition-colors duration-200 py-1"
-              >
-                <div className="w-2 h-2 bg-green-500 rounded-full"></div>
-                Produk Organik
-              </Link>
-              <Link
-                href="/category/lokal"
-                className="flex items-center gap-2 text-gray-300 hover:text-green-400 transition-colors duration-200 py-1"
-              >
-                <div className="w-2 h-2 bg-green-500 rounded-full"></div>
-                Produk Lokal
-              </Link>
-              <Link
-                href="/category/promo"
-                className="flex items-center gap-2 text-gray-300 hover:text-green-400 transition-colors duration-200 py-1"
-              >
-                <div className="w-2 h-2 bg-green-500 rounded-full"></div>
-                Promo Spesial
-              </Link>
             </div>
           </div>
 
@@ -177,7 +111,7 @@ const Footer = () => {
               </div>
               <div className="flex items-center gap-3 text-gray-300">
                 <Mail className="w-4 h-4 text-green-400" />
-                <span>hello@vegetashop.com</span>
+                <span>vegetashop@email.com</span>
               </div>
               <div className="flex items-start gap-3 text-gray-300">
                 <MapPin className="w-4 h-4 text-green-400 mt-1" />
@@ -260,34 +194,16 @@ const Footer = () => {
         <div className="container mx-auto px-4 py-6">
           <div className="flex flex-col md:flex-row justify-between items-center gap-4">
             <div className="flex items-center gap-2 text-gray-400">
-              <span>© 2024 VegetaShop. All rights reserved.</span>
+              <span>
+                &copy; 2025 Kelompok 6 - Hafizh Kurniawan, Nurya Qiswah, Rendi
+                Nanda Wibisana
+              </span>
               <Badge
                 variant="outline"
                 className="bg-green-900/30 text-green-300 border-green-800 text-xs"
               >
                 v1.0.0
               </Badge>
-            </div>
-
-            <div className="flex items-center gap-6 text-sm text-gray-400">
-              <Link
-                href="/terms"
-                className="hover:text-green-400 transition-colors"
-              >
-                Syarat & Ketentuan
-              </Link>
-              <Link
-                href="/privacy"
-                className="hover:text-green-400 transition-colors"
-              >
-                Kebijakan Privasi
-              </Link>
-              <Link
-                href="/sitemap"
-                className="hover:text-green-400 transition-colors"
-              >
-                Sitemap
-              </Link>
             </div>
 
             <div className="flex items-center gap-2 text-gray-400">

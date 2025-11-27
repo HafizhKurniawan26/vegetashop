@@ -47,7 +47,11 @@ const ProductModal = ({
             <div className="relative w-24 h-24 rounded-xl overflow-hidden border-2 border-green-100">
               {imageUrl ? (
                 <Image
-                  src={`${process.env.NEXT_PUBLIC_STRAPI_API_URL + imageUrl}`}
+                  src={
+                    imageUrl.startsWith("http")
+                      ? imageUrl
+                      : `${process.env.NEXT_PUBLIC_STRAPI_API_URL}${imageUrl}`
+                  }
                   alt={selectedProduct.name}
                   fill
                   className="object-cover"

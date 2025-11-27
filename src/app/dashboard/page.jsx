@@ -5,6 +5,7 @@ import React from "react";
 import { useDashboard } from "@/_hooks/useDashboard";
 import { useDashboardNavigation } from "@/_hooks/useDashboardNavigation";
 import { useDashboardProducts } from "@/_hooks/useDashboardProducts";
+import { useDashboardCategories } from "@/_hooks/useDashboardCategories";
 import { useDashboardOrders } from "@/_hooks/useDashboardOrders";
 import { useDashboardUsers } from "@/_hooks/useDashboardUsers";
 import { useDashboardAnalytics } from "@/_hooks/useDashboardAnalytics";
@@ -13,14 +14,17 @@ import { useDashboardAnalytics } from "@/_hooks/useDashboardAnalytics";
 import Sidebar from "@/_components/dashboard/Sidebar";
 import OverviewTab from "@/_components/dashboard/OverviewTab";
 import ProductsTab from "@/_components/dashboard/ProductsTab";
+import CategoriesTab from "@/_components/dashboard/CategoriesTab";
 import OrdersTab from "@/_components/dashboard/OrdersTab";
 import AnalyticsTab from "@/_components/dashboard/AnalyticsTab";
 import ProductModal from "@/_components/dashboard/ProductModal";
+import CategoryModal from "@/_components/dashboard/CategoryModal";
 
 // UI Components dari shadcn
 import { Tabs, TabsContent } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
+import Copyright from "@/_components/Copyright";
 
 export default function DashboardPage() {
   // Custom Hooks
@@ -36,10 +40,11 @@ export default function DashboardPage() {
   } = useDashboardNavigation();
 
   const productsHook = useDashboardProducts(jwt, isAdmin);
+  const categoriesHook = useDashboardCategories(jwt, isAdmin); // HOOK CATEGORIES
   const ordersHook = useDashboardOrders(jwt, isAdmin);
   const usersHook = useDashboardUsers(jwt, isAdmin);
 
-  // Analytics functions - SEKARANG MENGGUNAKAN useMemo
+  // Analytics functions - MENGGUNAKAN useMemo
   const analytics = useDashboardAnalytics(
     ordersHook.orders,
     productsHook.products,
@@ -88,7 +93,6 @@ export default function DashboardPage() {
         mobileSidebarOpen={mobileSidebarOpen}
         sidebarOpen={sidebarOpen}
       />
-
       {/* Mobile Overlay */}
       {mobileSidebarOpen && (
         <div
@@ -96,18 +100,53 @@ export default function DashboardPage() {
           onClick={() => setMobileSidebarOpen(false)}
         />
       )}
-
       {/* Main Content */}
       <div className="flex-1 flex flex-col min-w-0">
         {/* Top Header */}
         <header className="bg-white shadow-sm border-b border-gray-200">
           <div className="flex items-center justify-between p-4">
             <div className="flex items-center gap-4">
+              <Button
+                variant="ghost"
+                size="sm"
+                className="lg:hidden"
+                onClick={() => setMobileSidebarOpen(true)}
+              >
+                <svg
+                  className="w-6 h-6"
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M4 6h16M4 12h16M4 18h16"
+                  />
+                </svg>
+              </Button>
               <div>
                 <h1 className="text-2xl font-semibold text-gray-900">
                   {navItems.find((item) => item.id === activeTab)?.label ||
                     "Dashboard"}
                 </h1>
+                <p className="text-sm text-gray-600">
+                  Kelola toko Anda dengan mudah
+                </p>
+              </div>
+            </div>
+            <div className="flex items-center gap-4">
+              <div className="flex items-center gap-3">
+                <div className="text-right">
+                  <p className="font-medium text-gray-900">{user?.username}</p>
+                  <p className="text-sm text-gray-600">{user?.email}</p>
+                </div>
+                <div className="w-10 h-10 bg-gradient-to-r from-blue-500 to-blue-600 rounded-full flex items-center justify-center">
+                  <span className="text-white font-semibold text-sm">
+                    {user?.username?.charAt(0).toUpperCase()}
+                  </span>
+                </div>
               </div>
             </div>
           </div>
@@ -127,9 +166,9 @@ export default function DashboardPage() {
                   products={productsHook.products}
                   users={usersHook.users}
                   orders={ordersHook.orders}
-                  orderStats={analytics.orderStats} // SEKARANG VALUE
+                  orderStats={analytics.orderStats}
                   getStatusBadge={ordersHook.getStatusBadge}
-                  settlementRevenue={analytics.settlementRevenue} // SEKARANG VALUE
+                  settlementRevenue={analytics.settlementRevenue}
                 />
               </TabsContent>
 
@@ -153,6 +192,36 @@ export default function DashboardPage() {
                 />
               </TabsContent>
 
+              {/* Categories Tab - YANG DITAMBAHKAN */}
+              <TabsContent value="categories">
+                <CategoriesTab
+                  categories={categoriesHook.categories}
+                  searchCategoryQuery={categoriesHook.searchCategoryQuery}
+                  setSearchCategoryQuery={categoriesHook.setSearchCategoryQuery}
+                  setIsCategoryModalOpen={categoriesHook.setIsCategoryModalOpen}
+                  handleEditCategory={categoriesHook.handleEditCategory}
+                  handleDeleteCategory={categoriesHook.handleDeleteCategory}
+                  categoriesLoading={categoriesHook.categoriesLoading}
+                  deleteCategoryDialogOpen={
+                    categoriesHook.deleteCategoryDialogOpen
+                  }
+                  setDeleteCategoryDialogOpen={
+                    categoriesHook.setDeleteCategoryDialogOpen
+                  }
+                  categoryToDelete={categoriesHook.categoryToDelete}
+                  handleConfirmDeleteCategory={
+                    categoriesHook.handleConfirmDeleteCategory
+                  }
+                  handleCancelDeleteCategory={
+                    categoriesHook.handleCancelDeleteCategory
+                  }
+                  deleteCategoryMutation={categoriesHook.deleteCategoryMutation}
+                  getProductsCountByCategory={
+                    categoriesHook.getProductsCountByCategory
+                  }
+                />
+              </TabsContent>
+
               {/* Orders Tab */}
               <TabsContent value="orders">
                 <OrdersTab
@@ -160,7 +229,7 @@ export default function DashboardPage() {
                   orderStatusFilter={ordersHook.orderStatusFilter}
                   setOrderStatusFilter={ordersHook.setOrderStatusFilter}
                   getStatusBadge={ordersHook.getStatusBadge}
-                  settlementRevenue={analytics.settlementRevenue} // SEKARANG VALUE
+                  settlementRevenue={analytics.settlementRevenue}
                   getOrdersByStatus={ordersHook.getOrdersByStatus}
                   handleViewOrder={ordersHook.handleViewOrder}
                   handleStatusChange={ordersHook.handleStatusChange}
@@ -174,11 +243,11 @@ export default function DashboardPage() {
               {/* Analytics Tab */}
               <TabsContent value="analytics">
                 <AnalyticsTab
-                  bestSellingProducts={analytics.bestSellingProducts} // SEKARANG VALUE
-                  categoryPerformance={analytics.categoryPerformance} // SEKARANG VALUE
-                  orderStats={analytics.orderStats} // SEKARANG VALUE
-                  revenueTrends={analytics.revenueTrends} // SEKARANG VALUE
-                  userGrowth={analytics.userGrowth} // SEKARANG VALUE
+                  bestSellingProducts={analytics.bestSellingProducts}
+                  categoryPerformance={analytics.categoryPerformance}
+                  orderStats={analytics.orderStats}
+                  revenueTrends={analytics.revenueTrends}
+                  userGrowth={analytics.userGrowth}
                   categories={productsHook.categories}
                   products={productsHook.products}
                   orders={ordersHook.orders}
@@ -189,7 +258,6 @@ export default function DashboardPage() {
           </div>
         </main>
       </div>
-
       {/* Modals */}
       <ProductModal
         isProductModalOpen={productsHook.isProductModalOpen}
@@ -197,11 +265,22 @@ export default function DashboardPage() {
         editingProduct={productsHook.editingProduct}
         productForm={productsHook.productForm}
         setProductForm={productsHook.setProductForm}
-        categories={productsHook.categories}
+        categories={categoriesHook.categories} // GUNAKAN CATEGORIES DARI HOOK CATEGORIES
         handleImageChange={productsHook.handleImageChange}
         handleSubmitProduct={productsHook.handleSubmitProduct}
         createProductMutation={productsHook.createProductMutation}
         updateProductMutation={productsHook.updateProductMutation}
+      />
+      {/* Category Modal - YANG DITAMBAHKAN */}
+      <CategoryModal
+        isCategoryModalOpen={categoriesHook.isCategoryModalOpen}
+        handleCategoryModalClose={categoriesHook.handleCategoryModalClose}
+        editingCategory={categoriesHook.editingCategory}
+        categoryForm={categoriesHook.categoryForm}
+        setCategoryForm={categoriesHook.setCategoryForm}
+        handleSubmitCategory={categoriesHook.handleSubmitCategory}
+        createCategoryMutation={categoriesHook.createCategoryMutation}
+        updateCategoryMutation={categoriesHook.updateCategoryMutation}
       />
     </div>
   );

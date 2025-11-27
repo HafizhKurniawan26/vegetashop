@@ -31,9 +31,11 @@ const DetailProduct = ({
           <div className="space-y-6">
             <div className="flex items-center gap-4">
               <Image
-                src={`http://localhost:1337${
-                  selectedProduct.images?.[0]?.url || ""
-                }`}
+                src={
+                  selectedProduct?.images?.[0]?.url?.startsWith("http")
+                    ? selectedProduct.images[0].url
+                    : `${process.env.NEXT_PUBLIC_STRAPI_API_URL}${selectedProduct.images[0].url}`
+                }
                 alt={selectedProduct.name || "Product image"}
                 width={96}
                 height={96}

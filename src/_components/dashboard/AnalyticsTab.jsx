@@ -20,6 +20,7 @@ import {
   CardDescription,
 } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import Copyright from "../Copyright";
 
 const AnalyticsTab = ({
   bestSellingProducts,
@@ -97,7 +98,6 @@ const AnalyticsTab = ({
                       variant="outline"
                       className="bg-green-50 text-green-700 border-green-200"
                     >
-                      <DollarSign className="w-3 h-3 mr-1" />
                       Rp {item.totalRevenue?.toLocaleString("id-ID") || "0"}
                     </Badge>
                   </div>
@@ -117,7 +117,7 @@ const AnalyticsTab = ({
                       <li>• Data items kosong atau tidak terbaca</li>
                     </ul>
                   </div>
-                  <div className="mt-4 p-3 bg-gray-100 rounded text-xs">
+                  {/* <div className="mt-4 p-3 bg-gray-100 rounded text-xs">
                     <p>
                       <strong>Debug Info:</strong>
                     </p>
@@ -127,7 +127,7 @@ const AnalyticsTab = ({
                         .length || 0}
                     </p>
                     <p>Total Products: {products?.length || 0}</p>
-                  </div>
+                  </div> */}
                 </div>
               )}
             </div>
@@ -208,7 +208,7 @@ const AnalyticsTab = ({
                       <li>• Kategori tidak match dengan produk</li>
                     </ul>
                   </div>
-                  <div className="mt-4 p-3 bg-gray-100 rounded text-xs">
+                  {/* <div className="mt-4 p-3 bg-gray-100 rounded text-xs">
                     <p>
                       <strong>Debug Info:</strong>
                     </p>
@@ -218,14 +218,13 @@ const AnalyticsTab = ({
                       {products?.filter((p) => p.categories?.length > 0)
                         .length || 0}
                     </p>
-                  </div>
+                  </div> */}
                 </div>
               )}
             </div>
           </CardContent>
         </Card>
       </div>
-
       {/* Statistik lainnya tetap sama... */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {/* User Statistics */}
@@ -331,7 +330,6 @@ const AnalyticsTab = ({
           </CardContent>
         </Card>
       </div>
-
       {/* Order Statistics */}
       <Card>
         <CardHeader>
@@ -384,6 +382,7 @@ const AnalyticsTab = ({
           )}
         </CardContent>
       </Card>
+      <Copyright />
     </div>
   );
 };

@@ -57,7 +57,7 @@ export default function OrdersPage() {
 
       // Gunakan users_permissions_user untuk Strapi bawaan
       const response = await fetch(
-        `http://localhost:1337/api/orders?filters[users_permissions_user][id][$eq]=${user.id}&sort=createdAt:desc`,
+        `${process.env.NEXT_PUBLIC_STRAPI_API_URL}/api/orders?filters[users_permissions_user][id][$eq]=${user.id}&sort=createdAt:desc`,
         {
           headers: {
             Authorization: `Bearer ${jwt}`,
@@ -191,12 +191,6 @@ export default function OrdersPage() {
         {/* Header */}
         <div className="flex items-center justify-between mb-8">
           <div className="flex items-center gap-4">
-            <Button variant="ghost" asChild>
-              <Link href="/">
-                <ArrowLeft className="w-4 h-4 mr-2" />
-                Kembali ke Beranda
-              </Link>
-            </Button>
             <div>
               <h1 className="text-3xl font-bold text-gray-900">Pesanan Saya</h1>
               <p className="text-gray-600">
@@ -285,22 +279,6 @@ export default function OrdersPage() {
             </div>
           </CardContent>
         </Card>
-
-        {/* Debug Info - Hapus di production */}
-        {process.env.NODE_ENV === "development" && (
-          <Card className="mb-4 border-yellow-200 bg-yellow-50">
-            <CardContent className="p-4">
-              <div className="text-sm text-yellow-800">
-                <p className="font-medium">Debug Info:</p>
-                <p>User ID: {user?.id}</p>
-                <p>JWT: {jwt ? "Ada" : "Tidak ada"}</p>
-                <p>Total Orders: {orders.length}</p>
-                <p>Filtered Orders: {filteredOrders.length}</p>
-                <p>Field yang digunakan: users_permissions_user</p>
-              </div>
-            </CardContent>
-          </Card>
-        )}
 
         {/* Orders List */}
         {isLoading ? (

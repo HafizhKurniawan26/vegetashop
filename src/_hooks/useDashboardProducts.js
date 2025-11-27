@@ -1,5 +1,6 @@
+"use client";
 import { useState, useEffect } from "react";
-import { useQuery, useMutation } from "@tanstack/react-query";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import globalApi from "@/_utils/globalApi";
 
@@ -14,11 +15,14 @@ export const useDashboardProducts = (jwt, isAdmin) => {
     price: "",
     stock: "",
     category: "",
+    unit: "pcs",
     image: null,
     imagePreview: "",
   });
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [productToDelete, setProductToDelete] = useState(null);
+
+  const queryClient = useQueryClient();
 
   // Get category name untuk Strapi v5 dengan documentId
   const getCategoryName = (product) => {
@@ -121,7 +125,7 @@ export const useDashboardProducts = (jwt, isAdmin) => {
       toast.success("Produk berhasil dibuat");
       setIsProductModalOpen(false);
       resetProductForm();
-      refetchProducts();
+      queryClient.invalidateQueries(["products"]);
     },
     onError: (error) => {
       console.error("Create product error:", error);
@@ -139,7 +143,7 @@ export const useDashboardProducts = (jwt, isAdmin) => {
       toast.success("Produk berhasil diperbarui");
       setIsProductModalOpen(false);
       resetProductForm();
-      refetchProducts();
+      queryClient.invalidateQueries(["products"]);
     },
     onError: (error) => {
       console.error("Update product error:", error);
@@ -154,7 +158,9 @@ export const useDashboardProducts = (jwt, isAdmin) => {
     mutationFn: (documentId) => globalApi.deleteProduct(jwt, documentId),
     onSuccess: () => {
       toast.success("Produk berhasil dihapus");
-      refetchProducts();
+      setDeleteDialogOpen(false);
+      setProductToDelete(null);
+      queryClient.invalidateQueries(["products"]);
     },
     onError: (error) => {
       console.error("Delete product error:", error);
@@ -171,6 +177,7 @@ export const useDashboardProducts = (jwt, isAdmin) => {
       price: "",
       stock: "",
       category: "",
+      unit: "pcs",
       image: null,
       imagePreview: "",
     });
@@ -189,10 +196,13 @@ export const useDashboardProducts = (jwt, isAdmin) => {
       price: product.price || "",
       stock: product.stock || "",
       category: categoryDocumentId,
+      unit: product.unit || "pcs",
       image: null,
       imagePreview:
         product.images && product.images.length > 0
-          ? `${process.env.NEXT_PUBLIC_STRAPI_API_URL}${product.images[0].url}`
+          ? product.images[0].url.startsWith("http")
+            ? product.images[0].url
+            : `${process.env.NEXT_PUBLIC_STRAPI_API_URL}${product.images[0].url}`
           : "",
     });
     setIsProductModalOpen(true);
@@ -201,6 +211,18 @@ export const useDashboardProducts = (jwt, isAdmin) => {
   const handleImageChange = (e) => {
     const file = e.target.files[0];
     if (file) {
+      // Validasi ukuran file (max 5MB)
+      if (file.size > 5 * 1024 * 1024) {
+        toast.error("Ukuran file terlalu besar. Maksimal 5MB.");
+        return;
+      }
+
+      // Validasi tipe file
+      if (!file.type.startsWith("image/")) {
+        toast.error("File harus berupa gambar.");
+        return;
+      }
+
       setProductForm((prev) => ({
         ...prev,
         image: file,
@@ -212,41 +234,70 @@ export const useDashboardProducts = (jwt, isAdmin) => {
   const handleSubmitProduct = async (e) => {
     e.preventDefault();
 
+    // Validasi form
+    if (!productForm.name.trim()) {
+      toast.error("Nama produk harus diisi");
+      return;
+    }
+
+    if (!productForm.price || parseFloat(productForm.price) <= 0) {
+      toast.error("Harga harus lebih dari 0");
+      return;
+    }
+
+    if (!productForm.stock || parseInt(productForm.stock) < 0) {
+      toast.error("Stok tidak boleh negatif");
+      return;
+    }
+
+    if (!productForm.category) {
+      toast.error("Kategori harus dipilih");
+      return;
+    }
+
+    if (!productForm.unit) {
+      toast.error("Satuan harus dipilih");
+      return;
+    }
+
     try {
       const productData = {
         data: {
-          name: productForm.name,
+          name: productForm.name.trim(),
           price: parseFloat(productForm.price),
           stock: parseInt(productForm.stock),
+          unit: productForm.unit,
         },
       };
 
+      // Handle categories
+      if (productForm.category) {
+        productData.data.categories = [productForm.category];
+      }
+
       // Handle images
       if (productForm.image) {
+        // Upload image baru
         const formData = new FormData();
         formData.append("files", productForm.image);
-        const imageResponse = await globalApi.uploadImage(jwt, formData);
 
-        if (imageResponse && imageResponse.length > 0) {
-          productData.data.images = [imageResponse[0].id];
+        try {
+          const imageResponse = await globalApi.uploadImage(jwt, formData);
+          if (imageResponse && imageResponse.length > 0) {
+            productData.data.images = [imageResponse[0].id];
+          }
+        } catch (imageError) {
+          console.error("Error uploading image:", imageError);
+          toast.error("Gagal mengupload gambar");
+          return;
         }
       } else if (
         editingProduct &&
         editingProduct.images &&
         editingProduct.images.length > 0
       ) {
+        // Gunakan image yang sudah ada
         productData.data.images = [editingProduct.images[0].id];
-      }
-
-      // Handle categories
-      if (productForm.category) {
-        productData.data.categories = [productForm.category];
-      } else if (
-        editingProduct &&
-        editingProduct.categories &&
-        editingProduct.categories.length > 0
-      ) {
-        productData.data.categories = [editingProduct.categories[0].documentId];
       }
 
       if (editingProduct) {
@@ -270,12 +321,7 @@ export const useDashboardProducts = (jwt, isAdmin) => {
 
   const handleConfirmDelete = () => {
     if (productToDelete) {
-      deleteProductMutation.mutate(productToDelete, {
-        onSettled: () => {
-          setDeleteDialogOpen(false);
-          setProductToDelete(null);
-        },
-      });
+      deleteProductMutation.mutate(productToDelete);
     }
   };
 
@@ -289,7 +335,47 @@ export const useDashboardProducts = (jwt, isAdmin) => {
     resetProductForm();
   };
 
+  // Get product statistics
+  const getProductStatistics = () => {
+    const totalProducts = products.length;
+    const outOfStockProducts = products.filter(
+      (product) => product.stock === 0
+    ).length;
+    const lowStockProducts = products.filter(
+      (product) => product.stock > 0 && product.stock <= 10
+    ).length;
+    const inStockProducts = products.filter(
+      (product) => product.stock > 10
+    ).length;
+
+    return {
+      totalProducts,
+      outOfStockProducts,
+      lowStockProducts,
+      inStockProducts,
+    };
+  };
+
+  // Get products by category
+  const getProductsByCategory = (categoryId) => {
+    return products.filter(
+      (product) =>
+        product.categories &&
+        product.categories.some((cat) => cat.documentId === categoryId)
+    );
+  };
+
+  // Search products by name or category
+  const searchProducts = (query) => {
+    return products.filter(
+      (product) =>
+        product.name?.toLowerCase().includes(query.toLowerCase()) ||
+        getCategoryName(product)?.toLowerCase().includes(query.toLowerCase())
+    );
+  };
+
   return {
+    // State
     products: filteredProducts,
     categories,
     searchQuery,
@@ -302,8 +388,12 @@ export const useDashboardProducts = (jwt, isAdmin) => {
     deleteDialogOpen,
     setDeleteDialogOpen,
     productToDelete,
-    categoriesLoading,
+
+    // Loading states
     productsLoading,
+    categoriesLoading,
+
+    // Functions
     getCategoryName,
     handleEditProduct,
     handleImageChange,
@@ -313,6 +403,12 @@ export const useDashboardProducts = (jwt, isAdmin) => {
     handleCancelDelete,
     handleModalClose,
     resetProductForm,
+    getProductStatistics,
+    getProductsByCategory,
+    searchProducts,
+    refetchProducts,
+
+    // Mutations
     createProductMutation,
     updateProductMutation,
     deleteProductMutation,

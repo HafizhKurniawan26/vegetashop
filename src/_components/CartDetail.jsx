@@ -441,7 +441,11 @@ export function CartDetail({ variant = "default" }) {
                         <div className="w-20 h-20 rounded-xl overflow-hidden bg-gradient-to-br from-green-50 to-blue-50 border-2 border-green-100">
                           {imageUrl ? (
                             <Image
-                              src={`http://localhost:1337${imageUrl}`}
+                              src={
+                                imageUrl.startsWith("http")
+                                  ? imageUrl
+                                  : `${process.env.NEXT_PUBLIC_STRAPI_API_URL}${imageUrl}`
+                              }
                               alt={product?.name || "Product"}
                               width={80}
                               height={80}

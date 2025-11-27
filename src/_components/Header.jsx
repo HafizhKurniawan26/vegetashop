@@ -2,18 +2,7 @@
 import React, { useEffect, useState } from "react";
 import SearchInput from "./SearchInput";
 import { Button } from "@/components/ui/button";
-import {
-  ShoppingCart,
-  User,
-  LogOut,
-  Menu,
-  X,
-  Home,
-  Package,
-  Phone,
-  History,
-  ChevronDown,
-} from "lucide-react";
+import { User, LogOut, Menu, X, History, ChevronDown } from "lucide-react";
 import Link from "next/link";
 import { useRouter, usePathname } from "next/navigation";
 import {
@@ -35,8 +24,12 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { CartDetail } from "./CartDetail";
-import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
-import { Badge } from "@/components/ui/badge";
+import {
+  Sheet,
+  SheetContent,
+  SheetTrigger,
+  SheetTitle,
+} from "@/components/ui/sheet";
 
 const Header = ({ searchQuery, setSearchQuery }) => {
   const [jwt, setJwt] = useState(null);
@@ -74,16 +67,7 @@ const Header = ({ searchQuery, setSearchQuery }) => {
 
   const handleOrderHistory = () => {
     router.push("/orders");
-  };
-
-  const navigationItems = [
-    { name: "Beranda", href: "/", icon: Home },
-    { name: "Produk", href: "/products", icon: Package },
-    { name: "Kontak", href: "/contact", icon: Phone },
-  ];
-
-  const isActiveLink = (href) => {
-    return pathname === href;
+    setMobileMenuOpen(false);
   };
 
   return (
@@ -262,9 +246,9 @@ const Header = ({ searchQuery, setSearchQuery }) => {
         </div>
 
         {/* Mobile Navigation */}
-        <div className="lg:hidden flex items-center justify-between py-4">
+        <div className="lg:hidden flex items-center justify-between py-3">
           {/* Logo Mobile */}
-          <Link href="/" className="flex items-center gap-2">
+          <Link href="/" className="flex items-center gap-2 flex-1">
             <div
               className={`w-8 h-8 rounded-lg flex items-center justify-center ${
                 scrolled
@@ -274,16 +258,29 @@ const Header = ({ searchQuery, setSearchQuery }) => {
             >
               <span className="font-bold text-white text-sm">V</span>
             </div>
-            <h1
-              className={`text-xl font-bold ${
-                scrolled ? "text-gray-900" : "text-white"
-              }`}
-            >
-              VEGETASHOP
-            </h1>
+            <div className="flex flex-col">
+              <h1
+                className={`text-lg font-bold leading-tight ${
+                  scrolled ? "text-gray-900" : "text-white"
+                }`}
+              >
+                VEGETA
+                <span className={scrolled ? "text-gray-900" : "text-white"}>
+                  SHOP
+                </span>
+              </h1>
+              <p
+                className={`text-[10px] leading-tight ${
+                  scrolled ? "text-gray-500" : "text-green-100"
+                }`}
+              >
+                Fresh Groceries
+              </p>
+            </div>
           </Link>
 
-          <div className="flex items-center gap-3">
+          {/* Right Side - Cart dan Menu */}
+          <div className="flex items-center gap-2">
             {/* Cart Mobile */}
             <CartDetail variant={scrolled ? "default" : "light"} />
 
@@ -295,14 +292,17 @@ const Header = ({ searchQuery, setSearchQuery }) => {
                   size="icon"
                   className={`rounded-xl ${
                     scrolled
-                      ? "border-gray-300"
-                      : "text-white hover:bg-white/20"
+                      ? "border-gray-300 text-gray-700"
+                      : "text-white hover:bg-white/20 border-transparent"
                   }`}
                 >
                   <Menu className="w-5 h-5" />
                 </Button>
               </SheetTrigger>
-              <SheetContent side="right" className="w-80 rounded-l-2xl">
+              <SheetContent side="right" className="w-80 p-0 rounded-l-2xl">
+                {/* Tambahkan SheetTitle yang tersembunyi untuk aksesibilitas */}
+                <SheetTitle className="sr-only">Menu Navigasi</SheetTitle>
+
                 <div className="flex flex-col h-full">
                   {/* Header Mobile Menu */}
                   <div className="flex items-center justify-between p-4 border-b border-gray-200">
@@ -330,67 +330,47 @@ const Header = ({ searchQuery, setSearchQuery }) => {
                     <div className="p-4 bg-gradient-to-r from-green-50 to-emerald-50 border-b border-green-100">
                       <div className="flex items-center gap-3">
                         <div className="w-12 h-12 bg-gradient-to-r from-green-500 to-emerald-500 rounded-full flex items-center justify-center">
-                          <span className="text-white font-bold">
+                          <span className="text-white font-bold text-lg">
                             {user?.username?.charAt(0).toUpperCase()}
                           </span>
                         </div>
-                        <div>
-                          <p className="font-semibold text-gray-900">
+                        <div className="flex-1 min-w-0">
+                          <p className="font-semibold text-gray-900 truncate">
                             {user?.username}
                           </p>
-                          <p className="text-sm text-gray-500">{user?.email}</p>
+                          <p className="text-sm text-gray-500 truncate">
+                            {user?.email}
+                          </p>
                         </div>
                       </div>
                     </div>
                   )}
 
-                  {/* Navigation Mobile */}
-                  <nav className="flex-1 p-4 space-y-2">
-                    {navigationItems.map((item) => {
-                      const Icon = item.icon;
-                      return (
-                        <Link
-                          key={item.name}
-                          href={item.href}
-                          onClick={() => setMobileMenuOpen(false)}
-                          className={`flex items-center gap-3 px-4 py-3 rounded-xl font-medium transition-all duration-200 ${
-                            isActiveLink(item.href)
-                              ? "bg-green-50 text-green-700 border border-green-200"
-                              : "text-gray-600 hover:bg-gray-50 hover:text-gray-900"
-                          }`}
-                        >
-                          <Icon className="w-5 h-5" />
-                          {item.name}
-                        </Link>
-                      );
-                    })}
-
-                    {/* Order History in Mobile Menu */}
-                    {jwt && (
+                  {/* Order History Mobile */}
+                  {jwt && (
+                    <div className="p-4 border-b border-gray-200">
                       <button
-                        onClick={() => {
-                          handleOrderHistory();
-                          setMobileMenuOpen(false);
-                        }}
-                        className="flex items-center gap-3 px-4 py-3 rounded-xl font-medium text-gray-600 hover:bg-gray-50 hover:text-gray-900 w-full text-left transition-all duration-200"
+                        onClick={handleOrderHistory}
+                        className="flex items-center gap-3 px-3 py-3 rounded-xl font-medium text-gray-600 hover:bg-gray-50 hover:text-gray-900 w-full text-left transition-all duration-200"
                       >
-                        <History className="w-5 h-5" />
-                        Riwayat Pesanan
+                        <History className="w-5 h-5 text-gray-500" />
+                        <span className="text-sm">Riwayat Pesanan</span>
                       </button>
-                    )}
-                  </nav>
+                    </div>
+                  )}
 
                   {/* Auth Buttons Mobile */}
-                  <div className="p-4 border-t border-gray-200 space-y-3">
+                  <div className="p-4 border-t border-gray-200 space-y-3 mt-auto">
                     {!jwt ? (
                       <>
                         <Button
                           asChild
-                          className="w-full rounded-xl bg-green-600 hover:bg-green-700"
+                          className="w-full rounded-xl bg-green-600 hover:bg-green-700 text-white font-semibold"
                         >
                           <Link
                             href="/login"
                             onClick={() => setMobileMenuOpen(false)}
+                            className="flex items-center justify-center"
                           >
                             <User className="w-4 h-4 mr-2" />
                             Login
@@ -399,11 +379,12 @@ const Header = ({ searchQuery, setSearchQuery }) => {
                         <Button
                           asChild
                           variant="outline"
-                          className="w-full rounded-xl border-2"
+                          className="w-full rounded-xl border-2 border-gray-300 text-gray-700 hover:bg-gray-50 font-semibold"
                         >
                           <Link
                             href="/register"
                             onClick={() => setMobileMenuOpen(false)}
+                            className="flex items-center justify-center"
                           >
                             Daftar Akun
                           </Link>
@@ -414,13 +395,13 @@ const Header = ({ searchQuery, setSearchQuery }) => {
                         <AlertDialogTrigger asChild>
                           <Button
                             variant="outline"
-                            className="w-full rounded-xl border-red-200 text-red-600 hover:bg-red-50 hover:text-red-700"
+                            className="w-full rounded-xl border-red-200 text-red-600 hover:bg-red-50 hover:text-red-700 font-semibold"
                           >
                             <LogOut className="w-4 h-4 mr-2" />
                             Logout
                           </Button>
                         </AlertDialogTrigger>
-                        <AlertDialogContent className="rounded-2xl">
+                        <AlertDialogContent className="rounded-2xl max-w-[90vw]">
                           <AlertDialogHeader>
                             <AlertDialogTitle className="flex items-center gap-2 text-red-600">
                               <LogOut className="w-5 h-5" />
@@ -430,13 +411,13 @@ const Header = ({ searchQuery, setSearchQuery }) => {
                               Apakah Anda yakin ingin keluar dari akun Anda?
                             </AlertDialogDescription>
                           </AlertDialogHeader>
-                          <AlertDialogFooter>
-                            <AlertDialogCancel className="rounded-xl border-2">
+                          <AlertDialogFooter className="flex-col sm:flex-row gap-2">
+                            <AlertDialogCancel className="rounded-xl border-2 flex-1 order-2 sm:order-1">
                               Batal
                             </AlertDialogCancel>
                             <AlertDialogAction
                               onClick={handleLogout}
-                              className="rounded-xl bg-red-600 hover:bg-red-700"
+                              className="rounded-xl bg-red-600 hover:bg-red-700 flex-1 order-1 sm:order-2"
                             >
                               Ya, Logout
                             </AlertDialogAction>
@@ -452,11 +433,12 @@ const Header = ({ searchQuery, setSearchQuery }) => {
         </div>
 
         {/* Search Bar Mobile */}
-        <div className="lg:hidden pb-4">
+        <div className="lg:hidden pb-3">
           <SearchInput
             searchQuery={searchQuery}
             setSearchQuery={setSearchQuery}
             variant={scrolled ? "default" : "light"}
+            size="sm"
           />
         </div>
       </div>

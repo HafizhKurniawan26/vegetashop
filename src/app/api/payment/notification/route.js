@@ -129,7 +129,7 @@ async function clearUserCart(userId, jwt) {
 
     // Step 1: Get all cart items
     const cartResponse = await fetch(
-      `http://localhost:1337/api/user-carts?filters[users_permissions_user][id][$eq]=${userId}`,
+      `${process.env.NEXT_PUBLIC_STRAPI_API_URL}/api/user-carts?filters[users_permissions_user][id][$eq]=${userId}`,
       {
         headers: {
           Authorization: `Bearer ${jwt}`,
@@ -159,7 +159,7 @@ async function clearUserCart(userId, jwt) {
       console.log(`🗑️ Deleting cart item: ${itemId}`);
 
       const deleteResponse = await fetch(
-        `http://localhost:1337/api/user-carts/${itemId}`,
+        `${process.env.NEXT_PUBLIC_STRAPI_API_URL}/api/user-carts/${itemId}`,
         {
           method: "DELETE",
           headers: {
@@ -184,7 +184,7 @@ async function clearUserCart(userId, jwt) {
 
     // Step 4: Verify cart is empty
     const verifyResponse = await fetch(
-      `http://localhost:1337/api/user-carts?filters[users_permissions_user][id][$eq]=${userId}`,
+      `${process.env.NEXT_PUBLIC_STRAPI_API_URL}/api/user-carts?filters[users_permissions_user][id][$eq]=${userId}`,
       {
         headers: {
           Authorization: `Bearer ${jwt}`,
@@ -226,7 +226,7 @@ async function updateProductStock(items, jwt) {
 
       // Cari product menggunakan documentId
       const productResponse = await fetch(
-        `http://localhost:1337/api/products?filters[documentId][$eq]=${item.id}`,
+        `${process.env.NEXT_PUBLIC_STRAPI_API_URL}/api/products?filters[documentId][$eq]=${item.id}`,
         {
           headers: {
             Authorization: `Bearer ${jwt}`,
@@ -263,7 +263,7 @@ async function updateProductStock(items, jwt) {
       };
 
       const updateProductResponse = await fetch(
-        `http://localhost:1337/api/products/${productDocumentId}`,
+        `${process.env.NEXT_PUBLIC_STRAPI_API_URL}/api/products/${productDocumentId}`,
         {
           method: "PUT",
           headers: {
@@ -327,7 +327,7 @@ async function processNotificationBackground(notificationBody) {
 
     // Cari order di Strapi v5 dengan populate
     const orderResponse = await fetch(
-      `http://localhost:1337/api/orders?filters[order_id][$eq]=${order_id}&populate=*`,
+      `${process.env.NEXT_PUBLIC_STRAPI_API_URL}/api/orders?filters[order_id][$eq]=${order_id}&populate=*`,
       {
         headers: {
           Authorization: `Bearer ${process.env.STRAPI_API_TOKEN}`,
@@ -394,7 +394,7 @@ async function processNotificationBackground(notificationBody) {
 
     // Update order
     const updateResponse = await fetch(
-      `http://localhost:1337/api/orders/${orderDocumentId}`,
+      `${process.env.NEXT_PUBLIC_STRAPI_API_URL}/api/orders/${orderDocumentId}`,
       {
         method: "PUT",
         headers: {
@@ -410,7 +410,7 @@ async function processNotificationBackground(notificationBody) {
       console.error("❌ Failed to update order:", errorText);
       console.error(
         "❌ Update URL:",
-        `http://localhost:1337/api/orders/${orderDocumentId}`
+        `${process.env.NEXT_PUBLIC_STRAPI_API_URL}/api/orders/${orderDocumentId}`
       );
       return;
     }

@@ -6,6 +6,7 @@ import {
   ShoppingCart,
   TrendingUp,
   LogOut,
+  List,
 } from "lucide-react";
 
 export const useDashboardNavigation = () => {
@@ -19,6 +20,8 @@ export const useDashboardNavigation = () => {
     { id: "overview", label: "Overview", icon: BarChart3 },
     { id: "products", label: "Produk", icon: Package },
     { id: "orders", label: "Orders", icon: ShoppingCart },
+    // give icon for categories
+    { id: "categories", label: "Kategori", icon: List },
     { id: "analytics", label: "Analitik", icon: TrendingUp },
   ];
 

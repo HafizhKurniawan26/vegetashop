@@ -117,31 +117,55 @@ const ProductModal = ({
               </div>
             </div>
 
-            <div className="space-y-2">
-              <Label htmlFor="category" className="text-sm font-medium">
-                Kategori *
-              </Label>
-              <Select
-                value={productForm.category}
-                onValueChange={(value) =>
-                  setProductForm((prev) => ({ ...prev, category: value }))
-                }
-                required
-              >
-                <SelectTrigger className="focus:border-blue-500">
-                  <SelectValue placeholder="Pilih kategori" />
-                </SelectTrigger>
-                <SelectContent>
-                  {categories.map((category) => (
-                    <SelectItem
-                      key={category.documentId}
-                      value={category.documentId}
-                    >
-                      {category.name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label htmlFor="category" className="text-sm font-medium">
+                  Kategori *
+                </Label>
+                <Select
+                  value={productForm.category}
+                  onValueChange={(value) =>
+                    setProductForm((prev) => ({ ...prev, category: value }))
+                  }
+                  required
+                >
+                  <SelectTrigger className="focus:border-blue-500">
+                    <SelectValue placeholder="Pilih kategori" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {categories.map((category) => (
+                      <SelectItem
+                        key={category.documentId}
+                        value={category.documentId}
+                      >
+                        {category.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="unit" className="text-sm font-medium">
+                  Satuan *
+                </Label>
+                <Select
+                  value={productForm.unit}
+                  onValueChange={(value) =>
+                    setProductForm((prev) => ({ ...prev, unit: value }))
+                  }
+                  required
+                >
+                  <SelectTrigger className="focus:border-blue-500">
+                    <SelectValue placeholder="Pilih satuan" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="pcs">Pcs</SelectItem>
+                    <SelectItem value="ikat">Ikat</SelectItem>
+                    <SelectItem value="kg">Kg</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
             </div>
 
             <div className="space-y-2">

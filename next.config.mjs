@@ -2,15 +2,32 @@
 const nextConfig = {
   reactStrictMode: false,
   images: {
-    domains: ["localhost", "localhost:1337"],
-    // remotePatterns: [
-    //   {
-    //     protocol: "http",
-    //     hostname: "localhost",
-    //     port: "1337",
-    //     pathname: "/uploads/**",
-    //   },
-    // ],
+    remotePatterns: [
+      {
+        protocol: "https",
+        hostname: "jolly-novelty-db69ffff34.strapiapp.com",
+      },
+      {
+        protocol: "https",
+        hostname: "jolly-novelty-db69ffff34.media.strapiapp.com",
+      },
+      {
+        protocol: "http",
+        hostname: "localhost",
+      },
+      {
+        protocol: "https",
+        hostname: "retrogressive-subtriplicate-dawn.ngrok-free.dev",
+        port: "",
+        pathname: "/uploads/**",
+      },
+      {
+        protocol: "https",
+        hostname: "vegetashop.web.id",
+        port: "",
+        pathname: "/uploads/**",
+      },
+    ],
   },
 };
 

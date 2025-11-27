@@ -19,7 +19,11 @@ const ProductCard = ({ product, onBuy }) => {
     <Card className="group overflow-hidden hover:shadow-xl transition-all duration-300 border-0 bg-white rounded-2xl shadow-sm hover:-translate-y-1">
       <div className="relative h-48 w-full overflow-hidden ">
         <Image
-          src={`http://localhost:1337${product?.images?.[0]?.url}`}
+          src={
+            product?.images?.[0]?.url?.startsWith("http")
+              ? product.images[0].url
+              : `${process.env.NEXT_PUBLIC_STRAPI_API_URL}${product.images[0].url}`
+          }
           alt={product.name}
           fill
           className="object-cover group-hover:scale-105 transition-transform duration-300 p-4 w-32 h-32 mx-auto"
