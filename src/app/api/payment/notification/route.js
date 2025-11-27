@@ -1,204 +1,14 @@
 import { NextResponse } from "next/server";
-import midtransClient from "midtrans-client";
-import crypto from "crypto";
 
-// Mapping status Midtrans ke order_status
-const mapMidtransToOrderStatus = (transactionStatus, fraudStatus = null) => {
-  console.log(`🔄 Mapping status: ${transactionStatus}, fraud: ${fraudStatus}`);
+export async function POST(request) {
+  console.log("🎯 NOTIFICATION RECEIVED - START");
 
-  switch (transactionStatus) {
-    case "capture":
-      return fraudStatus === "accept" ? "settlement" : "capture";
-    case "settlement":
-      return "settlement";
-    case "pending":
-      return "pending";
-    case "deny":
-      return "deny";
-    case "expire":
-      return "expire";
-    case "cancel":
-      return "cancel";
-    case "refund":
-    case "partial_refund":
-      return "refund";
-    case "chargeback":
-    case "partial_chargeback":
-      return "chargeback";
-    case "failure":
-      return "failure";
-    case "authorize":
-      return "authorize";
-    default:
-      console.warn(`⚠️ Unknown status: ${transactionStatus}`);
-      return "pending";
-  }
-};
-
-// Clear user cart
-async function clearUserCart(userId, jwt) {
   try {
-    console.log(`🛒 Clearing cart for user: ${userId}`);
+    const notification = await request.json();
 
-    const cartResponse = await fetch(
-      `${process.env.NEXT_PUBLIC_STRAPI_API_URL}/api/user-carts?filters[users_permissions_user][id][$eq]=${userId}`,
-      {
-        headers: {
-          Authorization: `Bearer ${jwt}`,
-        },
-      }
-    );
-
-    if (!cartResponse.ok) {
-      console.error("❌ Failed to fetch cart");
-      return false;
-    }
-
-    const cartData = await cartResponse.json();
-    const cartItems = cartData.data || [];
-
-    console.log(`🗑️ Deleting ${cartItems.length} cart items`);
-
-    if (cartItems.length === 0) {
-      console.log("✅ Cart already empty");
-      return true;
-    }
-
-    const deletePromises = cartItems.map(async (item) => {
-      const itemId = item.documentId || item.id;
-      const deleteResponse = await fetch(
-        `${process.env.NEXT_PUBLIC_STRAPI_API_URL}/api/user-carts/${itemId}`,
-        {
-          method: "DELETE",
-          headers: {
-            Authorization: `Bearer ${jwt}`,
-          },
-        }
-      );
-
-      if (!deleteResponse.ok) {
-        console.error(`❌ Failed to delete item ${itemId}`);
-        return false;
-      }
-
-      console.log(`✅ Deleted cart item: ${itemId}`);
-      return true;
-    });
-
-    await Promise.all(deletePromises);
-    console.log(`✅ Cart cleared successfully`);
-    return true;
-  } catch (error) {
-    console.error("❌ Error clearing cart:", error);
-    return false;
-  }
-}
-
-// Update product stock
-async function updateProductStock(items, jwt) {
-  const productItems = items.filter((item) => item.category !== "shipping");
-  console.log(`📦 Updating stock for ${productItems.length} products`);
-
-  for (const item of productItems) {
-    try {
-      console.log(`🔍 Processing product ID: ${item.id}`);
-
-      const productResponse = await fetch(
-        `${process.env.NEXT_PUBLIC_STRAPI_API_URL}/api/products?filters[documentId][$eq]=${item.id}`,
-        {
-          headers: {
-            Authorization: `Bearer ${jwt}`,
-          },
-        }
-      );
-
-      if (!productResponse.ok) {
-        console.error(`❌ Failed to fetch product ${item.id}`);
-        continue;
-      }
-
-      const productData = await productResponse.json();
-      const product = productData.data?.[0];
-
-      if (!product) {
-        console.error(`❌ Product not found: ${item.id}`);
-        continue;
-      }
-
-      const newStock = Math.max(0, product.stock - item.quantity);
-
-      console.log(`📊 ${product.name}: ${product.stock} → ${newStock}`);
-
-      const updateResponse = await fetch(
-        `${process.env.NEXT_PUBLIC_STRAPI_API_URL}/api/products/${product.documentId}`,
-        {
-          method: "PUT",
-          headers: {
-            "Content-Type": "application/json",
-            Authorization: `Bearer ${jwt}`,
-          },
-          body: JSON.stringify({
-            data: { stock: newStock },
-          }),
-        }
-      );
-
-      if (!updateResponse.ok) {
-        console.error(`❌ Failed to update stock for ${item.id}`);
-        continue;
-      }
-
-      console.log(`✅ Stock updated for ${product.name}`);
-    } catch (error) {
-      console.error(`❌ Error updating stock for ${item.id}:`, error);
-    }
-  }
-
-  console.log("✅ Stock update completed");
-}
-
-// Find user by email (fallback)
-async function findUserByEmail(email, jwt) {
-  try {
-    console.log(`🔍 Finding user by email: ${email}`);
-
-    const response = await fetch(
-      `${process.env.NEXT_PUBLIC_STRAPI_API_URL}/api/users?filters[email][$eq]=${email}`,
-      {
-        headers: {
-          Authorization: `Bearer ${jwt}`,
-        },
-      }
-    );
-
-    if (!response.ok) {
-      console.error("❌ Failed to search user");
-      return null;
-    }
-
-    const users = await response.json();
-    const user = users[0];
-
-    if (user?.id) {
-      console.log(`✅ User found: ${user.id}`);
-      return user.id;
-    }
-
-    console.error("❌ User not found");
-    return null;
-  } catch (error) {
-    console.error("❌ Error finding user:", error);
-    return null;
-  }
-}
-
-// Main notification handler
-async function processNotification(notificationBody) {
-  try {
-    console.log("🔔 ========== PROCESSING NOTIFICATION ==========");
     console.log(
-      "📦 Notification body:",
-      JSON.stringify(notificationBody, null, 2)
+      "📦 FULL NOTIFICATION BODY:",
+      JSON.stringify(notification, null, 2)
     );
 
     const {
@@ -207,256 +17,334 @@ async function processNotification(notificationBody) {
       fraud_status,
       transaction_id,
       payment_type,
-      status_message,
       gross_amount,
-    } = notificationBody;
+      status_code,
+      signature_key,
+    } = notification;
 
-    // Initialize Midtrans
-    const snap = new midtransClient.Snap({
-      isProduction: process.env.MIDTRANS_IS_PRODUCTION === "true",
-      serverKey: process.env.MIDTRANS_SERVER_KEY,
+    // Log important fields
+    console.log("🔍 EXTRACTED FIELDS:", {
+      order_id,
+      transaction_status,
+      fraud_status,
+      transaction_id,
+      payment_type,
+      gross_amount,
+      status_code,
     });
 
-    // Verify with Midtrans API
-    console.log(`🔍 Verifying transaction: ${order_id}`);
-    const statusResponse = await snap.transaction.status(order_id);
+    // Validate required fields
+    if (!order_id) {
+      console.error("❌ MISSING ORDER_ID");
+      return NextResponse.json(
+        { status: "error", message: "Missing order_id" },
+        { status: 400 }
+      );
+    }
 
-    console.log("💳 Midtrans verification:", {
-      transaction_status: statusResponse.transaction_status,
-      fraud_status: statusResponse.fraud_status,
-      transaction_id: statusResponse.transaction_id,
-      payment_type: statusResponse.payment_type,
-    });
+    if (!transaction_status) {
+      console.error("❌ MISSING TRANSACTION_STATUS");
+      return NextResponse.json(
+        { status: "error", message: "Missing transaction_status" },
+        { status: 400 }
+      );
+    }
 
-    // Map status
-    const orderStatus = mapMidtransToOrderStatus(
-      statusResponse.transaction_status,
-      statusResponse.fraud_status
+    console.log(
+      `🔄 PROCESSING: Order ${order_id}, Status: ${transaction_status}`
     );
 
-    console.log(`✅ Final order status: ${orderStatus}`);
+    // STEP 1: Find order in Strapi
+    console.log(`🔍 SEARCHING ORDER IN STRAPI: ${order_id}`);
 
-    // Fetch order from Strapi
-    console.log(`🔍 Fetching order: ${order_id}`);
-    const orderResponse = await fetch(
-      `${process.env.NEXT_PUBLIC_STRAPI_API_URL}/api/orders?filters[order_id][$eq]=${order_id}&populate=users_permissions_user`,
-      {
-        headers: {
-          Authorization: `Bearer ${process.env.STRAPI_API_TOKEN}`,
+    const searchUrl = `${process.env.NEXT_PUBLIC_STRAPI_API_URL}/api/orders?filters[order_id][$eq]=${order_id}`;
+    console.log("🔍 STRAPI SEARCH URL:", searchUrl);
+
+    const orderSearchResponse = await fetch(searchUrl, {
+      headers: {
+        Authorization: `Bearer ${process.env.STRAPI_API_TOKEN}`,
+        "Content-Type": "application/json",
+      },
+    });
+
+    console.log(
+      "🔍 STRAPI SEARCH RESPONSE STATUS:",
+      orderSearchResponse.status
+    );
+
+    if (!orderSearchResponse.ok) {
+      const errorText = await orderSearchResponse.text();
+      console.error("❌ STRAPI SEARCH FAILED:", errorText);
+      return NextResponse.json(
+        {
+          status: "error",
+          message: "Strapi search failed",
+          details: errorText,
         },
-      }
+        { status: 500 }
+      );
+    }
+
+    const orderSearchData = await orderSearchResponse.json();
+    console.log(
+      "🔍 STRAPI SEARCH RESULT:",
+      JSON.stringify(orderSearchData, null, 2)
     );
 
-    if (!orderResponse.ok) {
-      const errorText = await orderResponse.text();
-      console.error("❌ Failed to fetch order:", errorText);
-      throw new Error("Failed to fetch order");
+    // Check if order exists
+    if (!orderSearchData.data || orderSearchData.data.length === 0) {
+      console.error("❌ ORDER NOT FOUND IN STRAPI");
+      return NextResponse.json(
+        {
+          status: "error",
+          message: "Order not found in Strapi",
+        },
+        { status: 404 }
+      );
     }
 
-    const orderData = await orderResponse.json();
-    const order = orderData.data?.[0];
+    const order = orderSearchData.data[0];
+    const orderDocumentId = order.documentId || order.id;
 
-    if (!order) {
-      console.error("❌ Order not found:", order_id);
-      throw new Error("Order not found");
-    }
-
-    console.log("📦 Order found:", {
-      documentId: order.documentId,
+    console.log(`✅ ORDER FOUND:`, {
+      documentId: orderDocumentId,
       current_status: order.order_status,
       customer_email: order.customer_email,
     });
 
-    // **PERBAIKAN: Struktur update payload yang benar untuk JSON fields**
+    // STEP 2: Prepare update data
     const updatePayload = {
       data: {
-        order_status: orderStatus,
-        midtrans_transaction_id: statusResponse.transaction_id,
+        order_status: transaction_status,
+        midtrans_transaction_id: transaction_id || `midtrans-${Date.now()}`,
         payment_data: {
-          // Simpan semua data response dari Midtrans
-          transaction_status: statusResponse.transaction_status,
-          fraud_status: statusResponse.fraud_status,
-          payment_type: statusResponse.payment_type,
-          status_message: statusResponse.status_message,
-          gross_amount: statusResponse.gross_amount,
-          transaction_time: statusResponse.transaction_time,
-          settlement_time: statusResponse.settlement_time,
-          currency: statusResponse.currency,
-          // Data tambahan
+          transaction_status,
+          fraud_status,
+          payment_type,
+          gross_amount,
+          transaction_id,
+          status_code,
           notification_received: new Date().toISOString(),
-          verified_via: "midtrans_api",
-          // Simpan juga data original notification
-          original_notification: notificationBody,
+          raw_notification: notification, // Store full notification for debugging
         },
       },
     };
 
-    console.log(`🔄 Updating order ${order.documentId} to ${orderStatus}`);
-    console.log("📝 Update payload:", JSON.stringify(updatePayload, null, 2));
+    console.log("📝 UPDATE PAYLOAD:", JSON.stringify(updatePayload, null, 2));
 
-    const updateResponse = await fetch(
-      `${process.env.NEXT_PUBLIC_STRAPI_API_URL}/api/orders/${order.documentId}`,
-      {
-        method: "PUT",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${process.env.STRAPI_API_TOKEN}`,
-        },
-        body: JSON.stringify(updatePayload),
-      }
-    );
+    // STEP 3: Update order in Strapi
+    const updateUrl = `${process.env.NEXT_PUBLIC_STRAPI_API_URL}/api/orders/${orderDocumentId}`;
+    console.log("🔧 UPDATE URL:", updateUrl);
+
+    const updateResponse = await fetch(updateUrl, {
+      method: "PUT",
+      headers: {
+        Authorization: `Bearer ${process.env.STRAPI_API_TOKEN}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify(updatePayload),
+    });
+
+    console.log("🔧 UPDATE RESPONSE STATUS:", updateResponse.status);
 
     if (!updateResponse.ok) {
-      const errorData = await updateResponse.json();
-      console.error("❌ Failed to update order:", errorData);
-      console.error("❌ Response status:", updateResponse.status);
+      const updateError = await updateResponse.text();
+      console.error("❌ STRAPI UPDATE FAILED:", updateError);
 
-      // Log error details untuk debugging
-      if (errorData.error) {
-        console.error(
-          "Error details:",
-          JSON.stringify(errorData.error, null, 2)
-        );
-      }
-
-      throw new Error(
-        "Failed to update order: " +
-          (errorData.error?.message || "Unknown error")
+      return NextResponse.json(
+        {
+          status: "error",
+          message: "Strapi update failed",
+          details: updateError,
+        },
+        { status: 500 }
       );
     }
 
     const updateResult = await updateResponse.json();
-    console.log("✅ Order updated successfully");
-    console.log("📝 Update result:", JSON.stringify(updateResult, null, 2));
+    console.log(
+      "✅ STRAPI UPDATE SUCCESS:",
+      JSON.stringify(updateResult, null, 2)
+    );
 
-    // Post-payment tasks untuk status settlement/success
+    // STEP 4: Handle successful payments
     if (
-      (orderStatus === "settlement" || orderStatus === "capture") &&
-      order.items
+      transaction_status === "settlement" ||
+      transaction_status === "capture"
     ) {
-      console.log(
-        "💰 Payment settled/captured, processing post-payment tasks..."
-      );
+      console.log("💰 PAYMENT SUCCESS - PROCESSING POST-PAYMENT TASKS");
 
       try {
-        // Update stock
-        console.log("📦 Updating product stock...");
-        await updateProductStock(order.items, process.env.STRAPI_API_TOKEN);
-
-        // Find user ID
-        let userId = null;
-
-        // Try multiple methods to get user ID
-        if (order.users_permissions_user?.data?.id) {
-          userId = order.users_permissions_user.data.id;
-          console.log(
-            "👤 User ID from users_permissions_user.data.id:",
-            userId
-          );
-        } else if (order.users_permissions_user?.id) {
-          userId = order.users_permissions_user.id;
-          console.log("👤 User ID from users_permissions_user.id:", userId);
-        } else if (typeof order.users_permissions_user === "number") {
-          userId = order.users_permissions_user;
-          console.log("👤 User ID (direct number):", userId);
-        }
-
-        // Fallback: search by email
-        if (!userId && order.customer_email) {
-          console.log("🔍 Fallback: searching user by email");
-          userId = await findUserByEmail(
-            order.customer_email,
-            process.env.STRAPI_API_TOKEN
-          );
-        }
-
-        // Clear cart
-        if (userId) {
-          console.log(`🛒 Clearing cart for user: ${userId}`);
-          await clearUserCart(userId, process.env.STRAPI_API_TOKEN);
-        } else {
-          console.warn("⚠️ Cannot clear cart: User ID not found");
-          console.log("🔍 Order structure:", JSON.stringify(order, null, 2));
-        }
-      } catch (error) {
-        console.error("❌ Error in post-payment tasks:", error);
-      }
-    }
-
-    console.log("✅ ========== NOTIFICATION PROCESSED ==========");
-    return true;
-  } catch (error) {
-    console.error("❌ ========== NOTIFICATION ERROR ==========");
-    console.error(error.message);
-    console.error(error.stack);
-    return false;
-  }
-}
-
-export async function POST(request) {
-  try {
-    console.log("🔔 ========== WEBHOOK RECEIVED ==========");
-
-    const body = await request.json();
-    console.log("📨 Raw notification:", JSON.stringify(body, null, 2));
-
-    const {
-      order_id,
-      status_code,
-      gross_amount,
-      signature_key,
-      transaction_status,
-    } = body;
-
-    // Validate signature (production only)
-    if (process.env.MIDTRANS_IS_PRODUCTION === "true") {
-      const serverKey = process.env.MIDTRANS_SERVER_KEY;
-      const hash = crypto
-        .createHash("sha512")
-        .update(`${order_id}${status_code}${gross_amount}${serverKey}`)
-        .digest("hex");
-
-      if (hash !== signature_key) {
-        console.error("❌ Invalid signature");
-        console.log("Expected:", hash);
-        console.log("Received:", signature_key);
-        return NextResponse.json(
-          { status: "error", message: "Invalid signature" },
-          { status: 401 }
+        await handleSuccessfulPayment(order, notification);
+      } catch (postPaymentError) {
+        console.error(
+          "⚠️ POST-PAYMENT ERROR (non-critical):",
+          postPaymentError
         );
       }
-      console.log("✅ Signature valid");
-    } else {
-      console.log("🟡 Development mode: Skip signature validation");
     }
 
-    // Send immediate response to Midtrans
-    const response = NextResponse.json({
-      status: "OK",
-      message: "Notification received",
-    });
+    console.log("🎉 NOTIFICATION PROCESSING COMPLETED SUCCESSFULLY");
 
-    // Process in background (don't await)
-    processNotification(body).catch((error) => {
-      console.error("Background processing error:", error);
+    // Always return success to Midtrans
+    return NextResponse.json({
+      status: "success",
+      message: "Notification processed successfully",
+      order_id,
+      transaction_status,
     });
-
-    console.log("✅ Response sent to Midtrans");
-    return response;
   } catch (error) {
-    console.error("❌ Webhook handler error:", error);
-    // Always return OK to Midtrans to prevent retries
-    return NextResponse.json({ status: "OK" });
+    console.error("❌ UNEXPECTED ERROR IN NOTIFICATION HANDLER:", error);
+
+    // Still return 200 to Midtrans to prevent retries
+    return NextResponse.json({
+      status: "ok",
+      message: "Notification received (with errors)",
+    });
   }
 }
 
-export async function OPTIONS() {
-  return new NextResponse(null, {
-    status: 200,
-    headers: {
-      "Access-Control-Allow-Origin": "*",
-      "Access-Control-Allow-Methods": "POST, OPTIONS",
-      "Access-Control-Allow-Headers": "Content-Type, Authorization",
+// Post-payment handling
+async function handleSuccessfulPayment(order, notification) {
+  console.log("🔄 STARTING POST-PAYMENT PROCESSING");
+
+  // 1. Update product stock
+  if (order.items && Array.isArray(order.items)) {
+    console.log(`📦 UPDATING STOCK FOR ${order.items.length} ITEMS`);
+
+    for (const item of order.items) {
+      if (item.category !== "shipping" && item.id) {
+        await updateProductStock(item.id, item.quantity);
+      }
+    }
+  }
+
+  // 2. Clear user cart
+  if (order.users_permissions_user) {
+    const userId =
+      order.users_permissions_user.id || order.users_permissions_user;
+    console.log(`🛒 CLEARING CART FOR USER: ${userId}`);
+    await clearUserCart(userId);
+  }
+
+  console.log("✅ POST-PAYMENT PROCESSING COMPLETED");
+}
+
+async function updateProductStock(productId, quantity) {
+  try {
+    console.log(
+      `🔍 UPDATING STOCK: Product ${productId}, Quantity ${quantity}`
+    );
+
+    // Get current product
+    const productResponse = await fetch(
+      `${process.env.NEXT_PUBLIC_STRAPI_API_URL}/api/products?filters[documentId][$eq]=${productId}`,
+      {
+        headers: {
+          Authorization: `Bearer ${process.env.STRAPI_API_TOKEN}`,
+        },
+      }
+    );
+
+    if (!productResponse.ok) {
+      console.error(`❌ FAILED TO FETCH PRODUCT ${productId}`);
+      return;
+    }
+
+    const productData = await productResponse.json();
+    const product = productData.data?.[0];
+
+    if (!product) {
+      console.error(`❌ PRODUCT ${productId} NOT FOUND`);
+      return;
+    }
+
+    const newStock = Math.max(0, product.stock - quantity);
+    console.log(
+      `📊 STOCK UPDATE: ${product.name} - ${product.stock} → ${newStock}`
+    );
+
+    // Update product stock
+    const updateResponse = await fetch(
+      `${process.env.NEXT_PUBLIC_STRAPI_API_URL}/api/products/${product.documentId}`,
+      {
+        method: "PUT",
+        headers: {
+          Authorization: `Bearer ${process.env.STRAPI_API_TOKEN}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          data: { stock: newStock },
+        }),
+      }
+    );
+
+    if (!updateResponse.ok) {
+      console.error(`❌ FAILED TO UPDATE STOCK FOR ${productId}`);
+      return;
+    }
+
+    console.log(`✅ STOCK UPDATED FOR: ${product.name}`);
+  } catch (error) {
+    console.error(`❌ STOCK UPDATE ERROR FOR ${productId}:`, error);
+  }
+}
+
+async function clearUserCart(userId) {
+  try {
+    console.log(`🛒 CLEARING CART FOR USER: ${userId}`);
+
+    // Get cart items
+    const cartResponse = await fetch(
+      `${process.env.NEXT_PUBLIC_STRAPI_API_URL}/api/user-carts?filters[users_permissions_user][id][$eq]=${userId}`,
+      {
+        headers: {
+          Authorization: `Bearer ${process.env.STRAPI_API_TOKEN}`,
+        },
+      }
+    );
+
+    if (!cartResponse.ok) {
+      console.error(`❌ FAILED TO FETCH CART FOR USER ${userId}`);
+      return;
+    }
+
+    const cartData = await cartResponse.json();
+    const cartItems = cartData.data || [];
+
+    console.log(`🗑️ FOUND ${cartItems.length} CART ITEMS TO DELETE`);
+
+    // Delete all cart items
+    for (const item of cartItems) {
+      const itemId = item.documentId || item.id;
+
+      await fetch(
+        `${process.env.NEXT_PUBLIC_STRAPI_API_URL}/api/user-carts/${itemId}`,
+        {
+          method: "DELETE",
+          headers: {
+            Authorization: `Bearer ${process.env.STRAPI_API_TOKEN}`,
+          },
+        }
+      );
+
+      console.log(`✅ DELETED CART ITEM: ${itemId}`);
+    }
+
+    console.log(`✅ CART CLEARED FOR USER: ${userId}`);
+  } catch (error) {
+    console.error(`❌ CART CLEARING ERROR FOR USER ${userId}:`, error);
+  }
+}
+
+// For testing
+export async function GET() {
+  return NextResponse.json({
+    message: "Payment notification endpoint is running",
+    timestamp: new Date().toISOString(),
+    environment: {
+      strapi_url: process.env.NEXT_PUBLIC_STRAPI_API_URL ? "SET" : "MISSING",
+      has_api_token: !!process.env.STRAPI_API_TOKEN,
     },
   });
 }

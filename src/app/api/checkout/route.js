@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import midtransClient from "midtrans-client";
+import globalApi from "@/_utils/globalApi";
 
 export async function POST(request) {
   try {
@@ -69,7 +70,7 @@ export async function POST(request) {
     const stockCheckResults = await Promise.all(stockCheckPromises);
     console.log("✅ Stock check passed:", stockCheckResults);
 
-    // **PERBAIKAN: Gunakan struktur yang benar untuk Strapi v5 JSON fields**
+    // Simpan order ke Strapi v5 dengan status pending
     const orderPayload = {
       data: {
         order_id: orderId,
@@ -79,17 +80,14 @@ export async function POST(request) {
           `${customerDetails.first_name} ${customerDetails.last_name}`.trim(),
         customer_email: customerDetails.email,
         customer_phone: customerDetails.phone,
-        shipping_address: customerDetails.shipping_address, // JSON field
-        items: items, // JSON field
-        users_permissions_user: userId,
+        shipping_address: customerDetails.shipping_address,
+        items: items,
+        user: userId,
         midtrans_transaction_id: null,
         payment_data: {
-          // JSON field
           payment_type: null,
           status: "pending",
           created_at: new Date().toISOString(),
-          gross_amount: grossAmount,
-          order_id: orderId,
         },
       },
     };
@@ -99,27 +97,8 @@ export async function POST(request) {
       JSON.stringify(orderPayload, null, 2)
     );
 
-    const orderResponse = await fetch(
-      `${process.env.NEXT_PUBLIC_STRAPI_API_URL}/api/orders`,
-      {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${jwt}`,
-        },
-        body: JSON.stringify(orderPayload),
-      }
-    );
-
-    if (!orderResponse.ok) {
-      const errorData = await orderResponse.json();
-      console.error("❌ Failed to create order:", errorData);
-      throw new Error(
-        "Gagal membuat order: " + (errorData.error?.message || "Unknown error")
-      );
-    }
-
-    const orderData = await orderResponse.json();
+    // Gunakan globalApi untuk create order
+    const orderData = await globalApi.createOrder(jwt, orderPayload);
     console.log("✅ Order created successfully:", orderData);
 
     // Initialize Snap client
@@ -153,7 +132,7 @@ export async function POST(request) {
       callbacks: {
         finish: `${process.env.NEXT_PUBLIC_BASE_URL}/order/finish`,
         error: `${process.env.NEXT_PUBLIC_BASE_URL}/order/error`,
-        unfinish: `${process.env.NEXT_PUBLIC_BASE_URL}/order/unfinish`,
+        pending: `${process.env.NEXT_PUBLIC_BASE_URL}/order/pending`,
       },
       expiry: {
         unit: "hours",
@@ -168,7 +147,6 @@ export async function POST(request) {
 
     console.log("✅ Midtrans transaction created:", {
       token: transaction.token,
-      redirect_url: transaction.redirect_url,
       order_id: orderId,
     });
 

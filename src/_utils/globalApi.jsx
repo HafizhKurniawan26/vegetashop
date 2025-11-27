@@ -1,4 +1,4 @@
-import axios, { get } from "axios";
+import axios from "axios";
 
 const axiosClient = axios.create({
   baseURL: `${process.env.NEXT_PUBLIC_STRAPI_API_URL}/api`,
@@ -107,7 +107,7 @@ const updateProduct = async (jwt, documentId, productData) => {
     console.log("Product Data:", JSON.stringify(productData, null, 2));
 
     const response = await axiosClient.put(
-      `/products/${documentId}`, // Gunakan documentId langsung
+      `/products/${documentId}`,
       productData,
       {
         headers: {
@@ -172,7 +172,7 @@ const addToCart = async (jwt, payload) => {
     );
     console.log("Product response:", productResponse.data);
 
-    const product = productResponse.data.data?.[0]; // Strapi v5 mengembalikan array
+    const product = productResponse.data.data?.[0];
 
     if (!product) {
       throw new Error("Produk tidak ditemukan");
@@ -190,7 +190,7 @@ const addToCart = async (jwt, payload) => {
       data: {
         quantity: quantity,
         amount: data.amount,
-        product: productId, // documentId produk
+        product: productId,
         users_permissions_user: userId,
       },
     };
@@ -286,7 +286,7 @@ const updateCartItem = async (jwt, documentId, payload) => {
     console.log("Payload:", JSON.stringify(payload, null, 2));
 
     const response = await axiosClient.put(
-      `/user-carts/${documentId}`, // Gunakan documentId
+      `/user-carts/${documentId}`,
       {
         data: {
           quantity: payload.quantity,
@@ -363,11 +363,10 @@ const deleteProduct = async (jwt, documentId) => {
   }
 };
 
-// Get user orders dengan filter yang lebih baik
 const getUserOrders = async (jwt, userId) => {
   try {
     const response = await axiosClient.get(
-      `/orders?filters[users_permissions_user][id][$eq]=${userId}&sort=createdAt:desc&populate=*`,
+      `/orders?filters[user][id][$eq]=${userId}&sort=createdAt:desc&populate=*`,
       {
         headers: {
           Authorization: `Bearer ${jwt}`,
@@ -424,6 +423,7 @@ const clearUserCart = async (jwt, userId) => {
   }
 };
 
+// Get all orders
 const getAllOrders = async (jwt) => {
   try {
     const response = await axiosClient.get(
@@ -442,26 +442,14 @@ const getAllOrders = async (jwt) => {
   }
 };
 
-const getOrderByOrderId = async (orderId) => {
-  try {
-    const response = await axiosClient.get(
-      `/orders?filters[order_id][$eq]=${orderId}&populate=*`
-    );
-    return response.data;
-  } catch (error) {
-    console.error("Error fetching order:", error);
-    throw error;
-  }
-};
-
-const updateOrderStatus = async (jwt, documentId, status, paymentData = {}) => {
+// Update order status
+const updateOrderStatus = async (jwt, documentId, status) => {
   try {
     const response = await axiosClient.put(
       `/orders/${documentId}`,
       {
         data: {
           order_status: status,
-          payment_data: paymentData,
         },
       },
       {
@@ -579,12 +567,85 @@ const deleteCategory = async (jwt, documentId) => {
       console.error("Response status:", error.response.status);
       console.error("Response data:", error.response.data);
 
-      // Check if category has products
       if (error.response.status === 400) {
         throw new Error(
           "Tidak dapat menghapus kategori yang masih memiliki produk"
         );
       }
+    }
+    throw error;
+  }
+};
+
+// ========== FUNGSI BARU UNTUK HANDLE ORDER ==========
+
+// Get order by order_id
+const getOrderByOrderId = async (jwt, orderId) => {
+  try {
+    console.log(`🔍 Searching order with order_id: ${orderId}`);
+    const response = await axiosClient.get(
+      `/orders?filters[order_id][$eq]=${orderId}&populate=*`
+    );
+    console.log(`✅ Order search result for ${orderId}:`, response.data);
+    return response.data;
+  } catch (error) {
+    console.error("❌ Error fetching order by order_id:", error);
+    throw error;
+  }
+};
+
+// Update order dengan documentId
+const updateOrder = async (jwt, documentId, orderData) => {
+  try {
+    console.log("🔄 UPDATE ORDER API CALL");
+    console.log("Document ID:", documentId);
+    console.log("Order Data:", JSON.stringify(orderData, null, 2));
+
+    const response = await axiosClient.put(`/orders/${documentId}`, orderData, {
+      headers: {
+        Authorization: `Bearer ${jwt}`,
+        "Content-Type": "application/json",
+      },
+    });
+
+    console.log("✅ UPDATE ORDER SUCCESS:", response.data);
+    return response.data;
+  } catch (error) {
+    console.error("❌ UPDATE ORDER ERROR:", error);
+    if (error.response) {
+      console.error("Response status:", error.response.status);
+      console.error("Response data:", error.response.data);
+      throw new Error(
+        error.response.data.error?.message || "Update order failed"
+      );
+    }
+    throw error;
+  }
+};
+
+// Create order
+const createOrder = async (jwt, orderData) => {
+  try {
+    console.log("🆕 CREATE ORDER API CALL");
+    console.log("Order Data:", JSON.stringify(orderData, null, 2));
+
+    const response = await axiosClient.post(`/orders`, orderData, {
+      headers: {
+        Authorization: `Bearer ${jwt}`,
+        "Content-Type": "application/json",
+      },
+    });
+
+    console.log("✅ CREATE ORDER SUCCESS:", response.data);
+    return response.data;
+  } catch (error) {
+    console.error("❌ CREATE ORDER ERROR:", error);
+    if (error.response) {
+      console.error("Response status:", error.response.status);
+      console.error("Response data:", error.response.data);
+      throw new Error(
+        error.response.data.error?.message || "Create order failed"
+      );
     }
     throw error;
   }
@@ -614,5 +675,8 @@ export default {
   createCategory,
   updateCategory,
   deleteCategory,
+  // New functions
   getOrderByOrderId,
+  updateOrder,
+  createOrder,
 };
