@@ -1,6 +1,5 @@
-// app/order/finish/page.js - Update status mapping untuk display
 "use client";
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, Suspense } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -17,7 +16,6 @@ import {
 import Header from "@/_components/Header";
 import Link from "next/link";
 
-// PERBAIKAN: Mapping status untuk display yang sesuai dengan enum Strapi
 const getDisplayStatus = (orderStatus) => {
   const statusMap = {
     pending: {
@@ -56,7 +54,36 @@ const getDisplayStatus = (orderStatus) => {
   );
 };
 
-export default function OrderFinishPage() {
+// Komponen loading fallback
+function OrderFinishLoading() {
+  return (
+    <div className="min-h-screen bg-gradient-to-b from-green-50 to-white">
+      <Header />
+      <div className="container mx-auto px-4 py-12">
+        <div className="max-w-2xl mx-auto">
+          <Card className="border-2 border-blue-200">
+            <CardContent className="p-8">
+              <div className="flex flex-col items-center text-center">
+                <div className="bg-blue-50 rounded-full p-4 mb-4">
+                  <Loader2 className="w-16 h-16 text-blue-600 animate-spin" />
+                </div>
+                <h1 className="text-2xl font-bold text-gray-900 mb-2">
+                  Memuat...
+                </h1>
+                <p className="text-blue-800">
+                  Sedang memuat status pesanan Anda.
+                </p>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// Komponen utama yang menggunakan useSearchParams
+function OrderFinishContent() {
   const searchParams = useSearchParams();
   const router = useRouter();
   const [orderStatus, setOrderStatus] = useState("loading");
@@ -76,7 +103,6 @@ export default function OrderFinishPage() {
 
     const checkOrderStatus = async () => {
       try {
-        // Tunggu sebentar untuk memastikan webhook sudah diproses
         await new Promise((resolve) => setTimeout(resolve, 3000));
 
         const response = await fetch(
@@ -123,7 +149,7 @@ export default function OrderFinishPage() {
       case "authorize":
         return {
           icon: <StatusIcon className="w-16 h-16 text-green-600" />,
-          title: "Pembayaran Berhasil! 🎉",
+          title: "Pembayaran Berhasil!",
           description: "Terima kasih! Pesanan Anda sedang diproses.",
           bgColor: "bg-green-50",
           borderColor: "border-green-200",
@@ -190,6 +216,15 @@ export default function OrderFinishPage() {
           borderColor: "border-gray-200",
           textColor: "text-gray-800",
         };
+      case "error":
+        return {
+          icon: <XCircle className="w-16 h-16 text-red-600" />,
+          title: "Terjadi Kesalahan",
+          description: "Terjadi kesalahan saat memuat data order.",
+          bgColor: "bg-red-50",
+          borderColor: "border-red-200",
+          textColor: "text-red-800",
+        };
       default:
         return {
           icon: <AlertTriangle className="w-16 h-16 text-gray-600" />,
@@ -213,7 +248,6 @@ export default function OrderFinishPage() {
         <div className="max-w-2xl mx-auto">
           <Card className={`${statusConfig.borderColor} border-2`}>
             <CardContent className="p-8">
-              {/* Status Icon */}
               <div className="flex flex-col items-center text-center mb-6">
                 <div
                   className={`${statusConfig.bgColor} rounded-full p-4 mb-4`}
@@ -231,7 +265,6 @@ export default function OrderFinishPage() {
                 </p>
               </div>
 
-              {/* Order Details */}
               {orderData && (
                 <div className="bg-gray-50 rounded-lg p-4 mb-6">
                   <h3 className="font-semibold text-gray-900 mb-3">
@@ -269,7 +302,6 @@ export default function OrderFinishPage() {
                 </div>
               )}
 
-              {/* Action Buttons */}
               <div className="flex flex-col sm:flex-row gap-3">
                 <Button
                   variant="outline"
@@ -290,14 +322,13 @@ export default function OrderFinishPage() {
                 </Button>
               </div>
 
-              {/* Additional Info */}
               {orderStatus === "pending" && (
                 <div className="mt-6 p-4 bg-blue-50 border border-blue-200 rounded-lg">
                   <p className="text-sm text-blue-800">
-                    💡 <strong>Tips:</strong> Jika Anda sudah melakukan
-                    pembayaran, status akan diperbarui secara otomatis dalam
-                    beberapa menit. Anda dapat memeriksa status pesanan di
-                    halaman "Pesanan Saya".
+                    <strong>Tips:</strong> Jika Anda sudah melakukan pembayaran,
+                    status akan diperbarui secara otomatis dalam beberapa menit.
+                    Anda dapat memeriksa status pesanan di halaman "Pesanan
+                    Saya".
                   </p>
                 </div>
               )}
@@ -305,7 +336,7 @@ export default function OrderFinishPage() {
               {orderStatus === "capture" && (
                 <div className="mt-6 p-4 bg-orange-50 border border-orange-200 rounded-lg">
                   <p className="text-sm text-orange-800">
-                    ⚠️ <strong>Perhatian:</strong> Pembayaran Anda sedang
+                    <strong>Perhatian:</strong> Pembayaran Anda sedang
                     diverifikasi oleh pihak bank. Proses ini biasanya memakan
                     waktu 1-2 jam kerja. Anda akan menerima notifikasi ketika
                     status berubah.
@@ -316,7 +347,7 @@ export default function OrderFinishPage() {
               {orderStatus === "settlement" && (
                 <div className="mt-6 p-4 bg-green-50 border border-green-200 rounded-lg">
                   <p className="text-sm text-green-800">
-                    ✅ <strong>Pesanan Diproses:</strong> Pembayaran Anda telah
+                    <strong>Pesanan Diproses:</strong> Pembayaran Anda telah
                     dikonfirmasi. Pesanan sedang dipersiapkan untuk dikirim.
                   </p>
                 </div>
@@ -326,5 +357,14 @@ export default function OrderFinishPage() {
         </div>
       </div>
     </div>
+  );
+}
+
+// Export default dengan Suspense
+export default function OrderFinishPage() {
+  return (
+    <Suspense fallback={<OrderFinishLoading />}>
+      <OrderFinishContent />
+    </Suspense>
   );
 }

@@ -41,7 +41,6 @@ export default function OrdersPage() {
     }
   }, []);
 
-  // Query untuk orders user - FIXED untuk Strapi bawaan
   const {
     data: ordersData,
     isLoading,
@@ -55,7 +54,6 @@ export default function OrdersPage() {
 
       console.log("🔍 Fetching orders for user:", user.id);
 
-      // Gunakan users_permissions_user untuk Strapi bawaan
       const response = await fetch(
         `${process.env.NEXT_PUBLIC_STRAPI_API_URL}/api/orders?filters[users_permissions_user][id][$eq]=${user.id}&sort=createdAt:desc`,
         {
@@ -95,7 +93,6 @@ export default function OrdersPage() {
     return matchesSearch && matchesStatus;
   });
 
-  // Fungsi untuk mendapatkan badge variant berdasarkan status
   const getStatusVariant = (status) => {
     switch (status) {
       case "paid":
@@ -115,7 +112,6 @@ export default function OrdersPage() {
     }
   };
 
-  // Fungsi untuk mendapatkan icon berdasarkan status
   const getStatusIcon = (status) => {
     switch (status) {
       case "paid":
@@ -135,7 +131,6 @@ export default function OrdersPage() {
     }
   };
 
-  // Fungsi untuk format tanggal
   const formatDate = (dateString) => {
     if (!dateString) return "Tanggal tidak tersedia";
     try {
@@ -152,7 +147,6 @@ export default function OrdersPage() {
     }
   };
 
-  // Fungsi untuk mendapatkan status text yang lebih user-friendly
   const getStatusText = (status) => {
     switch (status) {
       case "paid":
@@ -188,7 +182,6 @@ export default function OrdersPage() {
       <Header />
 
       <div className="container mx-auto px-4 py-8">
-        {/* Header */}
         <div className="flex items-center justify-between mb-8">
           <div className="flex items-center gap-4">
             <div>
@@ -203,7 +196,6 @@ export default function OrdersPage() {
           </Badge>
         </div>
 
-        {/* Error Message */}
         {error && (
           <Card className="mb-6 border-red-200 bg-red-50">
             <CardContent className="p-4">
@@ -222,11 +214,9 @@ export default function OrdersPage() {
           </Card>
         )}
 
-        {/* Filters */}
         <Card className="mb-6">
           <CardContent className="p-4">
             <div className="flex flex-col md:flex-row gap-4">
-              {/* Search */}
               <div className="flex-1 relative">
                 <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
                 <Input
@@ -237,7 +227,6 @@ export default function OrdersPage() {
                 />
               </div>
 
-              {/* Status Filter */}
               <div className="flex gap-2 overflow-x-auto">
                 <Button
                   variant={statusFilter === "all" ? "default" : "outline"}
@@ -280,7 +269,6 @@ export default function OrdersPage() {
           </CardContent>
         </Card>
 
-        {/* Orders List */}
         {isLoading ? (
           <div className="flex justify-center items-center py-12">
             <div className="text-center">
@@ -328,7 +316,6 @@ export default function OrdersPage() {
   );
 }
 
-// Component untuk Order Card
 function OrderCard({
   order,
   getStatusVariant,
