@@ -73,7 +73,7 @@ export async function POST(request) {
     const orderPayload = {
       data: {
         order_id: orderId,
-        order_status: "pending", // Default status
+        order_status: "pending", // Pastikan ini "pending" bukan null
         total_amount: parseFloat(grossAmount),
         customer_name:
           `${customerDetails.first_name} ${customerDetails.last_name}`.trim(),
@@ -82,7 +82,12 @@ export async function POST(request) {
         shipping_address: customerDetails.shipping_address,
         items: items,
         users_permissions_user: userId,
-        midtrans_transaction_id: null, // Akan diupdate nanti
+        midtrans_transaction_id: null,
+        payment_data: {
+          payment_type: null,
+          status: "pending",
+          created_at: new Date().toISOString(),
+        },
       },
     };
 
@@ -114,7 +119,7 @@ export async function POST(request) {
 
     // Initialize Snap client
     const snap = new midtransClient.Snap({
-      isProduction: false,
+      isProduction: process.env.MIDTRANS_IS_PRODUCTION === "true",
       serverKey: process.env.MIDTRANS_SERVER_KEY,
       clientKey: process.env.MIDTRANS_CLIENT_KEY,
     });
@@ -142,7 +147,7 @@ export async function POST(request) {
       },
       callbacks: {
         finish: `${process.env.NEXT_PUBLIC_BASE_URL}/order/finish`,
-        unfinish: `${process.env.NEXT_PUBLIC_BASE_URL}/order/error`,
+        error: `${process.env.NEXT_PUBLIC_BASE_URL}/order/error`,
       },
       expiry: {
         unit: "hours",

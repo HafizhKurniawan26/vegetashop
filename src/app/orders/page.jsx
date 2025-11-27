@@ -95,18 +95,21 @@ export default function OrdersPage() {
 
   const getStatusVariant = (status) => {
     switch (status) {
-      case "paid":
-        return "default";
+      case "settlement":
+      case "authorize":
+        return "default"; // Green/primary untuk success
       case "pending":
-        return "secondary";
-      case "failed":
-        return "destructive";
-      case "expired":
-        return "destructive";
-      case "canceled":
-        return "outline";
-      case "challenge":
-        return "secondary";
+        return "secondary"; // Gray untuk pending
+      case "capture":
+        return "secondary"; // Orange untuk verifikasi
+      case "deny":
+      case "expire":
+      case "cancel":
+      case "failure":
+        return "destructive"; // Red untuk failed
+      case "refund":
+      case "chargeback":
+        return "outline"; // Outline untuk refund/chargeback
       default:
         return "outline";
     }
@@ -114,18 +117,21 @@ export default function OrdersPage() {
 
   const getStatusIcon = (status) => {
     switch (status) {
-      case "paid":
+      case "settlement":
+      case "authorize":
         return <CheckCircle className="w-4 h-4" />;
       case "pending":
         return <Clock className="w-4 h-4" />;
-      case "failed":
+      case "capture":
+        return <ShieldAlert className="w-4 h-4" />;
+      case "deny":
+      case "expire":
+      case "cancel":
+      case "failure":
         return <XCircle className="w-4 h-4" />;
-      case "expired":
-        return <XCircle className="w-4 h-4" />;
-      case "canceled":
-        return <XCircle className="w-4 h-4" />;
-      case "challenge":
-        return <AlertTriangle className="w-4 h-4" />;
+      case "refund":
+      case "chargeback":
+        return <Package className="w-4 h-4" />;
       default:
         return <Package className="w-4 h-4" />;
     }
@@ -149,18 +155,26 @@ export default function OrdersPage() {
 
   const getStatusText = (status) => {
     switch (status) {
-      case "paid":
-        return "Berhasil";
+      case "settlement":
+        return "Pembayaran Berhasil";
+      case "authorize":
+        return "Terverifikasi";
       case "pending":
         return "Menunggu Pembayaran";
-      case "failed":
-        return "Gagal";
-      case "expired":
+      case "capture":
+        return "Menunggu Verifikasi";
+      case "deny":
+        return "Pembayaran Ditolak";
+      case "expire":
         return "Kadaluarsa";
-      case "canceled":
+      case "cancel":
         return "Dibatalkan";
-      case "challenge":
-        return "Dalam Verifikasi";
+      case "refund":
+        return "Dikembalikan";
+      case "chargeback":
+        return "Chargeback";
+      case "failure":
+        return "Gagal";
       default:
         return status;
     }

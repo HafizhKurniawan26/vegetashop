@@ -4,87 +4,45 @@ import crypto from "crypto";
 
 // Mapping status Midtrans ke order_status yang sesuai dengan enum Strapi
 const mapMidtransToOrderStatus = (transactionStatus, fraudStatus = null) => {
+  console.log(
+    `🔄 Mapping Midtrans status: ${transactionStatus}, fraud: ${fraudStatus}`
+  );
+
   switch (transactionStatus) {
     case "capture":
       if (fraudStatus === "challenge") {
-        return "capture";
+        return "capture"; // Menunggu verifikasi
       } else if (fraudStatus === "accept") {
-        return "settlement";
+        return "settlement"; // Pembayaran berhasil
       }
-      return "pending";
+      return "capture"; // Default untuk capture tanpa fraud status
     case "settlement":
-      return "settlement";
+      return "settlement"; // Pembayaran berhasil
     case "pending":
-      return "pending";
+      return "pending"; // Menunggu pembayaran
     case "deny":
-      return "deny";
+      return "deny"; // Pembayaran ditolak
     case "expire":
-      return "expire";
+      return "expire"; // Kadaluarsa
     case "cancel":
-      return "cancel";
+      return "cancel"; // Dibatalkan
     case "refund":
     case "partial_refund":
-      return "refund";
+      return "refund"; // Dikembalikan
     case "chargeback":
     case "partial_chargeback":
-      return "chargeback";
+      return "chargeback"; // Chargeback
     case "failure":
-      return "failure";
+      return "failure"; // Gagal
+    case "authorize":
+      return "authorize"; // Terauthorisasi
     default:
+      console.warn(
+        `⚠️ Unknown transaction status: ${transactionStatus}, defaulting to pending`
+      );
       return "pending";
   }
 };
-
-export async function POST(request) {
-  try {
-    console.log("🔔 ========== NOTIFICATION WEBHOOK CALLED ==========");
-
-    const body = await request.json();
-    console.log("📦 Notification received for order:", body.order_id);
-
-    const {
-      order_id,
-      status_code,
-      gross_amount,
-      signature_key,
-      transaction_status,
-      fraud_status,
-      transaction_id,
-    } = body;
-
-    // Validasi signature
-    const serverKey = process.env.MIDTRANS_SERVER_KEY;
-    const generatedSignature = crypto
-      .createHash("sha512")
-      .update(`${order_id}${status_code}${gross_amount}${serverKey}`)
-      .digest("hex");
-
-    const isProduction = process.env.MIDTRANS_IS_PRODUCTION === "true";
-    if (isProduction && generatedSignature !== signature_key) {
-      console.error("❌ Invalid signature");
-      return NextResponse.json({ status: "OK" });
-    }
-
-    console.log("✅ Signature valid");
-
-    // Kirim response cepat ke Midtrans
-    const response = NextResponse.json({
-      status: "OK",
-      message: "Notification received",
-    });
-
-    // Process business logic di background
-    processNotificationBackground(body).catch((error) => {
-      console.error("Background processing error:", error);
-    });
-
-    console.log("✅ Response sent to Midtrans, background processing started");
-    return response;
-  } catch (error) {
-    console.error("❌ Error in notification handler:", error);
-    return NextResponse.json({ status: "OK" });
-  }
-}
 
 // Fungsi untuk mencari user by email (fallback)
 async function findUserByEmailAndClearCart(email, jwt) {
@@ -106,7 +64,7 @@ async function findUserByEmailAndClearCart(email, jwt) {
     }
 
     const userData = await userResponse.json();
-    const user = userData[0]; // Strapi v4/5 users endpoint biasanya return array
+    const user = userData[0];
 
     if (user && user.id) {
       console.log(`✅ User found by email, ID: ${user.id}`);
@@ -181,29 +139,6 @@ async function clearUserCart(userId, jwt) {
     // Step 3: Wait for all deletions to complete
     await Promise.all(deletePromises);
     console.log(`✅ All ${cartItems.length} cart items deleted successfully`);
-
-    // Step 4: Verify cart is empty
-    const verifyResponse = await fetch(
-      `${process.env.NEXT_PUBLIC_STRAPI_API_URL}/api/user-carts?filters[users_permissions_user][id][$eq]=${userId}`,
-      {
-        headers: {
-          Authorization: `Bearer ${jwt}`,
-        },
-      }
-    );
-
-    if (verifyResponse.ok) {
-      const verifyData = await verifyResponse.json();
-      const remainingItems = verifyData.data || [];
-
-      if (remainingItems.length === 0) {
-        console.log("✅ Cart verification: COMPLETELY EMPTY");
-      } else {
-        console.log(
-          `⚠️ Cart verification: ${remainingItems.length} items remaining`
-        );
-      }
-    }
 
     return true;
   } catch (error) {
@@ -292,6 +227,10 @@ async function updateProductStock(items, jwt) {
 async function processNotificationBackground(notificationBody) {
   try {
     console.log("🔄 Starting background processing...");
+    console.log(
+      "📦 Full notification body:",
+      JSON.stringify(notificationBody, null, 2)
+    );
 
     const {
       order_id,
@@ -300,7 +239,16 @@ async function processNotificationBackground(notificationBody) {
       transaction_id,
       status_message,
       payment_type,
+      status_code,
     } = notificationBody;
+
+    // Debug logging untuk status mapping
+    console.log("🔍 Status mapping debug:", {
+      transaction_status,
+      fraud_status,
+      status_code,
+      status_message,
+    });
 
     // Initialize Midtrans client
     const snap = new midtransClient.Snap({
@@ -308,12 +256,15 @@ async function processNotificationBackground(notificationBody) {
       serverKey: process.env.MIDTRANS_SERVER_KEY,
     });
 
-    // Verifikasi transaction status
+    // Verifikasi transaction status dari Midtrans API
+    console.log(`🔍 Verifying transaction status for: ${order_id}`);
     const statusResponse = await snap.transaction.status(order_id);
-    console.log(
-      "💳 Payment status verified:",
-      statusResponse.transaction_status
-    );
+    console.log("💳 Payment status verified from API:", {
+      transaction_status: statusResponse.transaction_status,
+      fraud_status: statusResponse.fraud_status,
+      status_code: statusResponse.status_code,
+      status_message: statusResponse.status_message,
+    });
 
     // Map status Midtrans ke order_status
     const orderStatus = mapMidtransToOrderStatus(
@@ -322,7 +273,7 @@ async function processNotificationBackground(notificationBody) {
     );
 
     console.log(
-      `🔄 Mapping Midtrans status: ${statusResponse.transaction_status} -> ${orderStatus}`
+      `🔄 Final status mapping: ${statusResponse.transaction_status} + ${statusResponse.fraud_status} -> ${orderStatus}`
     );
 
     // Cari order di Strapi v5 dengan populate
@@ -383,6 +334,8 @@ async function processNotificationBackground(notificationBody) {
           payment_type: payment_type,
           status_message: status_message,
           fraud_status: fraud_status,
+          original_transaction_status: transaction_status,
+          verified_transaction_status: statusResponse.transaction_status,
         },
       },
     };
@@ -519,6 +472,62 @@ async function processNotificationBackground(notificationBody) {
     console.log("✅ Background processing completed");
   } catch (error) {
     console.error("❌ Error in background processing:", error);
+  }
+}
+
+export async function POST(request) {
+  try {
+    console.log("🔔 ========== NOTIFICATION WEBHOOK CALLED ==========");
+
+    const body = await request.json();
+    console.log("📦 Notification received for order:", body.order_id);
+
+    const {
+      order_id,
+      status_code,
+      gross_amount,
+      signature_key,
+      transaction_status,
+      fraud_status,
+      transaction_id,
+    } = body;
+
+    // Validasi signature (hanya di production)
+    const isProduction = process.env.MIDTRANS_IS_PRODUCTION === "true";
+    if (isProduction) {
+      const serverKey = process.env.MIDTRANS_SERVER_KEY;
+      const generatedSignature = crypto
+        .createHash("sha512")
+        .update(`${order_id}${status_code}${gross_amount}${serverKey}`)
+        .digest("hex");
+
+      if (generatedSignature !== signature_key) {
+        console.error("❌ Invalid signature");
+        console.log("Expected:", generatedSignature);
+        console.log("Received:", signature_key);
+        return NextResponse.json({ status: "OK" });
+      }
+      console.log("✅ Signature valid");
+    } else {
+      console.log("🟡 Development mode: Skipping signature validation");
+    }
+
+    // Kirim response cepat ke Midtrans
+    const response = NextResponse.json({
+      status: "OK",
+      message: "Notification received",
+    });
+
+    // Process business logic di background
+    processNotificationBackground(body).catch((error) => {
+      console.error("Background processing error:", error);
+    });
+
+    console.log("✅ Response sent to Midtrans, background processing started");
+    return response;
+  } catch (error) {
+    console.error("❌ Error in notification handler:", error);
+    return NextResponse.json({ status: "OK" });
   }
 }
 
