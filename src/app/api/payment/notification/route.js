@@ -208,6 +208,7 @@ async function processNotification(notificationBody) {
       transaction_id,
       payment_type,
       status_message,
+      gross_amount,
     } = notificationBody;
 
     // Initialize Midtrans
@@ -224,6 +225,7 @@ async function processNotification(notificationBody) {
       transaction_status: statusResponse.transaction_status,
       fraud_status: statusResponse.fraud_status,
       transaction_id: statusResponse.transaction_id,
+      payment_type: statusResponse.payment_type,
     });
 
     // Map status
@@ -248,7 +250,7 @@ async function processNotification(notificationBody) {
     if (!orderResponse.ok) {
       const errorText = await orderResponse.text();
       console.error("❌ Failed to fetch order:", errorText);
-      return;
+      throw new Error("Failed to fetch order");
     }
 
     const orderData = await orderResponse.json();
@@ -256,7 +258,7 @@ async function processNotification(notificationBody) {
 
     if (!order) {
       console.error("❌ Order not found:", order_id);
-      return;
+      throw new Error("Order not found");
     }
 
     console.log("📦 Order found:", {
@@ -265,26 +267,35 @@ async function processNotification(notificationBody) {
       customer_email: order.customer_email,
     });
 
-    // Update order
-    const orderDocumentId = order.documentId;
+    // **PERBAIKAN: Struktur update payload yang benar untuk JSON fields**
     const updatePayload = {
       data: {
         order_status: orderStatus,
         midtrans_transaction_id: statusResponse.transaction_id,
         payment_data: {
-          ...statusResponse,
+          // Simpan semua data response dari Midtrans
+          transaction_status: statusResponse.transaction_status,
+          fraud_status: statusResponse.fraud_status,
+          payment_type: statusResponse.payment_type,
+          status_message: statusResponse.status_message,
+          gross_amount: statusResponse.gross_amount,
+          transaction_time: statusResponse.transaction_time,
+          settlement_time: statusResponse.settlement_time,
+          currency: statusResponse.currency,
+          // Data tambahan
           notification_received: new Date().toISOString(),
-          payment_type: payment_type,
-          status_message: status_message,
+          verified_via: "midtrans_api",
+          // Simpan juga data original notification
+          original_notification: notificationBody,
         },
       },
     };
 
-    console.log(`🔄 Updating order ${orderDocumentId} to ${orderStatus}`);
+    console.log(`🔄 Updating order ${order.documentId} to ${orderStatus}`);
     console.log("📝 Update payload:", JSON.stringify(updatePayload, null, 2));
 
     const updateResponse = await fetch(
-      `${process.env.NEXT_PUBLIC_STRAPI_API_URL}/api/orders/${orderDocumentId}`,
+      `${process.env.NEXT_PUBLIC_STRAPI_API_URL}/api/orders/${order.documentId}`,
       {
         method: "PUT",
         headers: {
@@ -296,19 +307,36 @@ async function processNotification(notificationBody) {
     );
 
     if (!updateResponse.ok) {
-      const errorText = await updateResponse.text();
-      console.error("❌ Failed to update order:", errorText);
+      const errorData = await updateResponse.json();
+      console.error("❌ Failed to update order:", errorData);
       console.error("❌ Response status:", updateResponse.status);
-      return;
+
+      // Log error details untuk debugging
+      if (errorData.error) {
+        console.error(
+          "Error details:",
+          JSON.stringify(errorData.error, null, 2)
+        );
+      }
+
+      throw new Error(
+        "Failed to update order: " +
+          (errorData.error?.message || "Unknown error")
+      );
     }
 
     const updateResult = await updateResponse.json();
     console.log("✅ Order updated successfully");
     console.log("📝 Update result:", JSON.stringify(updateResult, null, 2));
 
-    // Post-payment tasks for settlement
-    if (orderStatus === "settlement" && order.items) {
-      console.log("💰 Payment settled, processing post-payment tasks...");
+    // Post-payment tasks untuk status settlement/success
+    if (
+      (orderStatus === "settlement" || orderStatus === "capture") &&
+      order.items
+    ) {
+      console.log(
+        "💰 Payment settled/captured, processing post-payment tasks..."
+      );
 
       try {
         // Update stock
@@ -347,7 +375,7 @@ async function processNotification(notificationBody) {
           console.log(`🛒 Clearing cart for user: ${userId}`);
           await clearUserCart(userId, process.env.STRAPI_API_TOKEN);
         } else {
-          console.error("❌ Cannot clear cart: User ID not found");
+          console.warn("⚠️ Cannot clear cart: User ID not found");
           console.log("🔍 Order structure:", JSON.stringify(order, null, 2));
         }
       } catch (error) {
@@ -356,9 +384,12 @@ async function processNotification(notificationBody) {
     }
 
     console.log("✅ ========== NOTIFICATION PROCESSED ==========");
+    return true;
   } catch (error) {
     console.error("❌ ========== NOTIFICATION ERROR ==========");
-    console.error(error);
+    console.error(error.message);
+    console.error(error.stack);
+    return false;
   }
 }
 

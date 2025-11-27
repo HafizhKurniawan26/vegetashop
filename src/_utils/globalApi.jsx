@@ -1,4 +1,4 @@
-import axios from "axios";
+import axios, { get } from "axios";
 
 const axiosClient = axios.create({
   baseURL: `${process.env.NEXT_PUBLIC_STRAPI_API_URL}/api`,
@@ -363,10 +363,11 @@ const deleteProduct = async (jwt, documentId) => {
   }
 };
 
+// Get user orders dengan filter yang lebih baik
 const getUserOrders = async (jwt, userId) => {
   try {
     const response = await axiosClient.get(
-      `/orders?filters[user][id][$eq]=${userId}&sort=createdAt:desc&populate=*`,
+      `/orders?filters[users_permissions_user][id][$eq]=${userId}&sort=createdAt:desc&populate=*`,
       {
         headers: {
           Authorization: `Bearer ${jwt}`,
@@ -423,7 +424,6 @@ const clearUserCart = async (jwt, userId) => {
   }
 };
 
-// Get all orders
 const getAllOrders = async (jwt) => {
   try {
     const response = await axiosClient.get(
@@ -442,14 +442,26 @@ const getAllOrders = async (jwt) => {
   }
 };
 
-// Update order status
-const updateOrderStatus = async (jwt, documentId, status) => {
+const getOrderByOrderId = async (orderId) => {
+  try {
+    const response = await axiosClient.get(
+      `/orders?filters[order_id][$eq]=${orderId}&populate=*`
+    );
+    return response.data;
+  } catch (error) {
+    console.error("Error fetching order:", error);
+    throw error;
+  }
+};
+
+const updateOrderStatus = async (jwt, documentId, status, paymentData = {}) => {
   try {
     const response = await axiosClient.put(
       `/orders/${documentId}`,
       {
         data: {
           order_status: status,
+          payment_data: paymentData,
         },
       },
       {
@@ -602,4 +614,5 @@ export default {
   createCategory,
   updateCategory,
   deleteCategory,
+  getOrderByOrderId,
 };
