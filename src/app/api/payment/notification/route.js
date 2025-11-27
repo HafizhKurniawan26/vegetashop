@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import midtransClient from "midtrans-client";
 
 export async function POST(request) {
   console.log("🎯 NOTIFICATION RECEIVED - START");
@@ -19,33 +20,20 @@ export async function POST(request) {
       payment_type,
       gross_amount,
       status_code,
-      signature_key,
     } = notification;
 
-    // Log important fields
     console.log("🔍 EXTRACTED FIELDS:", {
       order_id,
       transaction_status,
       fraud_status,
       transaction_id,
-      payment_type,
-      gross_amount,
-      status_code,
     });
 
     // Validate required fields
-    if (!order_id) {
-      console.error("❌ MISSING ORDER_ID");
+    if (!order_id || !transaction_status) {
+      console.error("❌ MISSING REQUIRED FIELDS");
       return NextResponse.json(
-        { status: "error", message: "Missing order_id" },
-        { status: 400 }
-      );
-    }
-
-    if (!transaction_status) {
-      console.error("❌ MISSING TRANSACTION_STATUS");
-      return NextResponse.json(
-        { status: "error", message: "Missing transaction_status" },
+        { status: "error", message: "Missing required fields" },
         { status: 400 }
       );
     }
@@ -57,7 +45,7 @@ export async function POST(request) {
     // STEP 1: Find order in Strapi
     console.log(`🔍 SEARCHING ORDER IN STRAPI: ${order_id}`);
 
-    const searchUrl = `${process.env.NEXT_PUBLIC_STRAPI_API_URL}/api/orders?filters[order_id][$eq]=${order_id}`;
+    const searchUrl = `${process.env.NEXT_PUBLIC_STRAPI_API_URL}/api/orders?filters[order_id][$eq]=${order_id}&populate[users_permissions_user][populate]=*`;
     console.log("🔍 STRAPI SEARCH URL:", searchUrl);
 
     const orderSearchResponse = await fetch(searchUrl, {
@@ -79,7 +67,6 @@ export async function POST(request) {
         {
           status: "error",
           message: "Strapi search failed",
-          details: errorText,
         },
         { status: 500 }
       );
@@ -104,12 +91,13 @@ export async function POST(request) {
     }
 
     const order = orderSearchData.data[0];
-    const orderDocumentId = order.documentId || order.id;
+    const orderDocumentId = order.documentId;
 
     console.log(`✅ ORDER FOUND:`, {
       documentId: orderDocumentId,
       current_status: order.order_status,
       customer_email: order.customer_email,
+      user_relation: order.users_permissions_user,
     });
 
     // STEP 2: Prepare update data
@@ -125,7 +113,7 @@ export async function POST(request) {
           transaction_id,
           status_code,
           notification_received: new Date().toISOString(),
-          raw_notification: notification, // Store full notification for debugging
+          raw_notification: notification,
         },
       },
     };
@@ -150,12 +138,10 @@ export async function POST(request) {
     if (!updateResponse.ok) {
       const updateError = await updateResponse.text();
       console.error("❌ STRAPI UPDATE FAILED:", updateError);
-
       return NextResponse.json(
         {
           status: "error",
           message: "Strapi update failed",
-          details: updateError,
         },
         { status: 500 }
       );
@@ -167,26 +153,27 @@ export async function POST(request) {
       JSON.stringify(updateResult, null, 2)
     );
 
-    // STEP 4: Handle successful payments
+    // STEP 4: Handle successful payments - CLEAR CART
     if (
       transaction_status === "settlement" ||
       transaction_status === "capture"
     ) {
-      console.log("💰 PAYMENT SUCCESS - PROCESSING POST-PAYMENT TASKS");
+      console.log("💰 PAYMENT SUCCESS - CLEARING USER CART");
 
       try {
-        await handleSuccessfulPayment(order, notification);
+        await clearUserCart(order);
+        console.log("✅ CART CLEARING PROCESS INITIATED");
       } catch (postPaymentError) {
         console.error(
-          "⚠️ POST-PAYMENT ERROR (non-critical):",
+          "⚠️ CART CLEARING ERROR (non-critical):",
           postPaymentError
         );
+        // Don't fail the whole process if cart clearing fails
       }
     }
 
     console.log("🎉 NOTIFICATION PROCESSING COMPLETED SUCCESSFULLY");
 
-    // Always return success to Midtrans
     return NextResponse.json({
       status: "success",
       message: "Notification processed successfully",
@@ -204,99 +191,64 @@ export async function POST(request) {
   }
 }
 
-// Post-payment handling
-async function handleSuccessfulPayment(order, notification) {
-  console.log("🔄 STARTING POST-PAYMENT PROCESSING");
-
-  // 1. Update product stock
-  if (order.items && Array.isArray(order.items)) {
-    console.log(`📦 UPDATING STOCK FOR ${order.items.length} ITEMS`);
-
-    for (const item of order.items) {
-      if (item.category !== "shipping" && item.id) {
-        await updateProductStock(item.id, item.quantity);
-      }
-    }
-  }
-
-  // 2. Clear user cart
-  if (order.users_permissions_user) {
-    const userId =
-      order.users_permissions_user.id || order.users_permissions_user;
-    console.log(`🛒 CLEARING CART FOR USER: ${userId}`);
-    await clearUserCart(userId);
-  }
-
-  console.log("✅ POST-PAYMENT PROCESSING COMPLETED");
-}
-
-async function updateProductStock(productId, quantity) {
+// **PERBAIKAN: Gunakan documentId untuk semua operasi**
+async function clearUserCart(order) {
   try {
-    console.log(
-      `🔍 UPDATING STOCK: Product ${productId}, Quantity ${quantity}`
-    );
+    console.log("🛒 STARTING CART CLEARING PROCESS");
 
-    // Get current product
-    const productResponse = await fetch(
-      `${process.env.NEXT_PUBLIC_STRAPI_API_URL}/api/products?filters[documentId][$eq]=${productId}`,
-      {
-        headers: {
-          Authorization: `Bearer ${process.env.STRAPI_API_TOKEN}`,
-        },
+    // Extract user ID dari order dengan berbagai cara
+    let userDocumentId = null;
+
+    // Method 1: Dari users_permissions_user relation
+    if (order.users_permissions_user) {
+      if (
+        order.users_permissions_user.data &&
+        order.users_permissions_user.data.documentId
+      ) {
+        userDocumentId = order.users_permissions_user.data.documentId;
+        console.log(
+          "👤 USER DOCUMENT ID FROM users_permissions_user.data.documentId:",
+          userDocumentId
+        );
+      } else if (order.users_permissions_user.documentId) {
+        userDocumentId = order.users_permissions_user.documentId;
+        console.log(
+          "👤 USER DOCUMENT ID FROM users_permissions_user.documentId:",
+          userDocumentId
+        );
       }
-    );
+    }
 
-    if (!productResponse.ok) {
-      console.error(`❌ FAILED TO FETCH PRODUCT ${productId}`);
+    // Method 2: Fallback - cari user by email
+    if (!userDocumentId && order.customer_email) {
+      console.log(
+        "🔍 FALLBACK: Searching user by email:",
+        order.customer_email
+      );
+      userDocumentId = await findUserByEmail(order.customer_email);
+    }
+
+    if (!userDocumentId) {
+      console.error("❌ CANNOT CLEAR CART: User Document ID not found");
+      console.log(
+        "🔍 Order structure for debugging:",
+        JSON.stringify(
+          {
+            users_permissions_user: order.users_permissions_user,
+            customer_email: order.customer_email,
+          },
+          null,
+          2
+        )
+      );
       return;
     }
 
-    const productData = await productResponse.json();
-    const product = productData.data?.[0];
+    console.log(`🔍 CLEARING CART FOR USER DOCUMENT ID: ${userDocumentId}`);
 
-    if (!product) {
-      console.error(`❌ PRODUCT ${productId} NOT FOUND`);
-      return;
-    }
-
-    const newStock = Math.max(0, product.stock - quantity);
-    console.log(
-      `📊 STOCK UPDATE: ${product.name} - ${product.stock} → ${newStock}`
-    );
-
-    // Update product stock
-    const updateResponse = await fetch(
-      `${process.env.NEXT_PUBLIC_STRAPI_API_URL}/api/products/${product.documentId}`,
-      {
-        method: "PUT",
-        headers: {
-          Authorization: `Bearer ${process.env.STRAPI_API_TOKEN}`,
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          data: { stock: newStock },
-        }),
-      }
-    );
-
-    if (!updateResponse.ok) {
-      console.error(`❌ FAILED TO UPDATE STOCK FOR ${productId}`);
-      return;
-    }
-
-    console.log(`✅ STOCK UPDATED FOR: ${product.name}`);
-  } catch (error) {
-    console.error(`❌ STOCK UPDATE ERROR FOR ${productId}:`, error);
-  }
-}
-
-async function clearUserCart(userId) {
-  try {
-    console.log(`🛒 CLEARING CART FOR USER: ${userId}`);
-
-    // Get cart items
+    // Get cart items - GUNAKAN documentId UNTUK FILTER
     const cartResponse = await fetch(
-      `${process.env.NEXT_PUBLIC_STRAPI_API_URL}/api/user-carts?filters[users_permissions_user][id][$eq]=${userId}`,
+      `${process.env.NEXT_PUBLIC_STRAPI_API_URL}/api/user-carts?filters[users_permissions_user][documentId][$eq]=${userDocumentId}&populate=*`,
       {
         headers: {
           Authorization: `Bearer ${process.env.STRAPI_API_TOKEN}`,
@@ -305,7 +257,7 @@ async function clearUserCart(userId) {
     );
 
     if (!cartResponse.ok) {
-      console.error(`❌ FAILED TO FETCH CART FOR USER ${userId}`);
+      console.error(`❌ FAILED TO FETCH CART FOR USER ${userDocumentId}`);
       return;
     }
 
@@ -314,26 +266,154 @@ async function clearUserCart(userId) {
 
     console.log(`🗑️ FOUND ${cartItems.length} CART ITEMS TO DELETE`);
 
-    // Delete all cart items
-    for (const item of cartItems) {
-      const itemId = item.documentId || item.id;
+    if (cartItems.length === 0) {
+      console.log("✅ CART ALREADY EMPTY");
+      return;
+    }
 
-      await fetch(
-        `${process.env.NEXT_PUBLIC_STRAPI_API_URL}/api/user-carts/${itemId}`,
+    // Delete all cart items - GUNAKAN documentId
+    const deletePromises = cartItems.map(async (item) => {
+      const itemDocumentId = item.documentId;
+
+      try {
+        const deleteResponse = await fetch(
+          `${process.env.NEXT_PUBLIC_STRAPI_API_URL}/api/user-carts/${itemDocumentId}`,
+          {
+            method: "DELETE",
+            headers: {
+              Authorization: `Bearer ${process.env.STRAPI_API_TOKEN}`,
+            },
+          }
+        );
+
+        if (deleteResponse.ok) {
+          console.log(`✅ DELETED CART ITEM: ${itemDocumentId}`);
+          return true;
+        } else {
+          console.error(`❌ FAILED TO DELETE CART ITEM: ${itemDocumentId}`);
+          return false;
+        }
+      } catch (error) {
+        console.error(`❌ ERROR DELETING CART ITEM ${itemDocumentId}:`, error);
+        return false;
+      }
+    });
+
+    await Promise.all(deletePromises);
+    console.log(`✅ CART CLEARED SUCCESSFULLY FOR USER: ${userDocumentId}`);
+
+    // Also update product stock for successful payments
+    if (order.items && Array.isArray(order.items)) {
+      console.log("📦 UPDATING PRODUCT STOCK");
+      await updateProductStocks(order.items);
+    }
+  } catch (error) {
+    console.error("❌ CART CLEARING ERROR:", error);
+    throw error;
+  }
+}
+
+// Helper function to find user by email - GUNAKAN documentId
+async function findUserByEmail(email) {
+  try {
+    console.log(`🔍 SEARCHING USER BY EMAIL: ${email}`);
+
+    const userResponse = await fetch(
+      `${process.env.NEXT_PUBLIC_STRAPI_API_URL}/api/users?filters[email][$eq]=${email}`,
+      {
+        headers: {
+          Authorization: `Bearer ${process.env.STRAPI_API_TOKEN}`,
+        },
+      }
+    );
+
+    if (!userResponse.ok) {
+      console.error("❌ FAILED TO SEARCH USER BY EMAIL");
+      return null;
+    }
+
+    const userData = await userResponse.json();
+
+    if (userData && userData.length > 0) {
+      const userDocumentId = userData[0].documentId;
+      console.log(`✅ USER FOUND BY EMAIL: ${userDocumentId}`);
+      return userDocumentId;
+    }
+
+    console.error("❌ USER NOT FOUND BY EMAIL");
+    return null;
+  } catch (error) {
+    console.error("❌ ERROR FINDING USER BY EMAIL:", error);
+    return null;
+  }
+}
+
+// Helper function to update product stocks - GUNAKAN documentId
+async function updateProductStocks(items) {
+  try {
+    const productItems = items.filter((item) => item.category !== "shipping");
+    console.log(`📦 UPDATING STOCK FOR ${productItems.length} PRODUCTS`);
+
+    for (const item of productItems) {
+      if (!item.id) continue;
+
+      console.log(
+        `🔍 UPDATING STOCK FOR PRODUCT: ${item.id}, QUANTITY: ${item.quantity}`
+      );
+
+      // Get current product - GUNAKAN documentId
+      const productResponse = await fetch(
+        `${process.env.NEXT_PUBLIC_STRAPI_API_URL}/api/products?filters[documentId][$eq]=${item.id}`,
         {
-          method: "DELETE",
           headers: {
             Authorization: `Bearer ${process.env.STRAPI_API_TOKEN}`,
           },
         }
       );
 
-      console.log(`✅ DELETED CART ITEM: ${itemId}`);
+      if (!productResponse.ok) {
+        console.error(`❌ FAILED TO FETCH PRODUCT ${item.id}`);
+        continue;
+      }
+
+      const productData = await productResponse.json();
+      const product = productData.data?.[0];
+
+      if (!product) {
+        console.error(`❌ PRODUCT ${item.id} NOT FOUND`);
+        continue;
+      }
+
+      const newStock = Math.max(0, product.stock - item.quantity);
+      console.log(
+        `📊 STOCK UPDATE: ${product.name} - ${product.stock} → ${newStock}`
+      );
+
+      // Update product stock - GUNAKAN documentId
+      const updateResponse = await fetch(
+        `${process.env.NEXT_PUBLIC_STRAPI_API_URL}/api/products/${product.documentId}`,
+        {
+          method: "PUT",
+          headers: {
+            Authorization: `Bearer ${process.env.STRAPI_API_TOKEN}`,
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            data: { stock: newStock },
+          }),
+        }
+      );
+
+      if (updateResponse.ok) {
+        console.log(`✅ STOCK UPDATED FOR: ${product.name}`);
+      } else {
+        console.error(`❌ FAILED TO UPDATE STOCK FOR: ${product.name}`);
+      }
     }
 
-    console.log(`✅ CART CLEARED FOR USER: ${userId}`);
+    console.log("✅ ALL PRODUCT STOCKS UPDATED");
   } catch (error) {
-    console.error(`❌ CART CLEARING ERROR FOR USER ${userId}:`, error);
+    console.error("❌ ERROR UPDATING PRODUCT STOCKS:", error);
   }
 }
 
@@ -342,9 +422,5 @@ export async function GET() {
   return NextResponse.json({
     message: "Payment notification endpoint is running",
     timestamp: new Date().toISOString(),
-    environment: {
-      strapi_url: process.env.NEXT_PUBLIC_STRAPI_API_URL ? "SET" : "MISSING",
-      has_api_token: !!process.env.STRAPI_API_TOKEN,
-    },
   });
 }
