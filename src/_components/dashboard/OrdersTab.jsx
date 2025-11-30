@@ -59,6 +59,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Progress } from "@/components/ui/progress";
 import OrderDetailView from "./OrderDetailView";
 import { jsPDF } from "jspdf";
+import Copyright from "../Copyright";
 
 const OrdersTab = ({
   orders,
@@ -708,6 +709,7 @@ const OrdersTab = ({
           )}
         </CardContent>
       </Card>
+      <Copyright />
     </div>
   );
 };

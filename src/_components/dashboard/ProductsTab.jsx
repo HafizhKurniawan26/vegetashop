@@ -39,6 +39,7 @@ import {
 } from "@/components/ui/alert-dialog";
 import { Skeleton } from "@/components/ui/skeleton";
 import Image from "next/image";
+import Copyright from "../Copyright";
 
 const ProductsTab = ({
   products,
@@ -328,6 +329,7 @@ const ProductsTab = ({
           </div>
         </div>
       </CardContent>
+      <Copyright />
     </Card>
   );
 };
