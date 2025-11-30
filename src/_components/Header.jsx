@@ -104,7 +104,7 @@ const Header = ({ searchQuery, setSearchQuery }) => {
                   scrolled ? "text-gray-900" : "text-white"
                 }`}
               >
-                <span className="text-green-400">VEGE</span>
+                <span className="text-green-400">VEGETA</span>
                 <span className={scrolled ? "text-gray-900" : "text-white"}>
                   SHOP
                 </span>

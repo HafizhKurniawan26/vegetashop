@@ -5,7 +5,7 @@ const axiosClient = axios.create({
   headers: {
     "ngrok-skip-browser-warning": "true",
     "Content-Type": "application/json",
-    "User-Agent": "custom",
+    // "User-Agent": "custom",
   },
 });
 

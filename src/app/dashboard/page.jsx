@@ -24,7 +24,6 @@ import CategoryModal from "@/_components/dashboard/CategoryModal";
 import { Tabs, TabsContent } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
-import Copyright from "@/_components/Copyright";
 
 export default function DashboardPage() {
   // Custom Hooks
@@ -40,11 +39,11 @@ export default function DashboardPage() {
   } = useDashboardNavigation();
 
   const productsHook = useDashboardProducts(jwt, isAdmin);
-  const categoriesHook = useDashboardCategories(jwt, isAdmin); // HOOK CATEGORIES
+  const categoriesHook = useDashboardCategories(jwt, isAdmin);
   const ordersHook = useDashboardOrders(jwt, isAdmin);
   const usersHook = useDashboardUsers(jwt, isAdmin);
 
-  // Analytics functions - MENGGUNAKAN useMemo
+  // Analytics functions
   const analytics = useDashboardAnalytics(
     ordersHook.orders,
     productsHook.products,
@@ -82,7 +81,7 @@ export default function DashboardPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 flex">
+    <div className="min-h-dvh bg-gray-50 flex">
       {/* Sidebar Navigation */}
       <Sidebar
         user={user}
@@ -92,18 +91,13 @@ export default function DashboardPage() {
         handleLogout={handleLogout}
         mobileSidebarOpen={mobileSidebarOpen}
         sidebarOpen={sidebarOpen}
+        setMobileSidebarOpen={setMobileSidebarOpen}
       />
-      {/* Mobile Overlay */}
-      {mobileSidebarOpen && (
-        <div
-          className="fixed inset-0 bg-black bg-opacity-50 z-40 lg:hidden"
-          onClick={() => setMobileSidebarOpen(false)}
-        />
-      )}
-      {/* Main Content */}
-      <div className="flex-1 flex flex-col min-w-0">
-        {/* Top Header */}
-        <header className="bg-white shadow-sm border-b border-gray-200">
+
+      {/* Main Content Area */}
+      <div className="flex-1 flex flex-col min-w-0 h-dvh">
+        {/* Top Header - Fixed */}
+        <header className="flex-shrink-0 bg-white shadow-sm border-b border-gray-200">
           <div className="flex items-center justify-between p-4">
             <div className="flex items-center gap-4">
               <Button
@@ -137,7 +131,7 @@ export default function DashboardPage() {
               </div>
             </div>
             <div className="flex items-center gap-4">
-              <div className="flex items-center gap-3">
+              <div className="hidden lg:flex items-center gap-3">
                 <div className="text-right">
                   <p className="font-medium text-gray-900">{user?.username}</p>
                   <p className="text-sm text-gray-600">{user?.email}</p>
@@ -152,112 +146,131 @@ export default function DashboardPage() {
           </div>
         </header>
 
-        {/* Main Content Area */}
-        <main className="flex-1 p-6 overflow-auto">
-          <div className="max-w-7xl mx-auto">
-            <Tabs
-              value={activeTab}
-              onValueChange={handleNavigation}
-              className="space-y-6"
-            >
-              {/* Overview Tab */}
-              <TabsContent value="overview">
-                <OverviewTab
-                  products={productsHook.products}
-                  users={usersHook.users}
-                  orders={ordersHook.orders}
-                  orderStats={analytics.orderStats}
-                  getStatusBadge={ordersHook.getStatusBadge}
-                  settlementRevenue={analytics.settlementRevenue}
-                />
-              </TabsContent>
+        {/* Main Content - Scrollable */}
+        <main className="flex-1 min-h-0 overflow-auto">
+          <div className="h-full p-6">
+            <div className="max-w-7xl mx-auto h-full">
+              <Tabs
+                value={activeTab}
+                onValueChange={handleNavigation}
+                className="h-full space-y-6"
+              >
+                {/* Overview Tab */}
+                <TabsContent value="overview" className="h-full mt-0">
+                  <div className="h-full">
+                    <OverviewTab
+                      products={productsHook.products}
+                      users={usersHook.users}
+                      orders={ordersHook.orders}
+                      orderStats={analytics.orderStats}
+                      getStatusBadge={ordersHook.getStatusBadge}
+                      settlementRevenue={analytics.settlementRevenue}
+                    />
+                  </div>
+                </TabsContent>
 
-              {/* Products Tab */}
-              <TabsContent value="products">
-                <ProductsTab
-                  products={productsHook.products}
-                  searchQuery={productsHook.searchQuery}
-                  setSearchQuery={productsHook.setSearchQuery}
-                  setIsProductModalOpen={productsHook.setIsProductModalOpen}
-                  getCategoryName={productsHook.getCategoryName}
-                  handleEditProduct={productsHook.handleEditProduct}
-                  handleDeleteProduct={productsHook.handleDeleteProduct}
-                  productsLoading={productsHook.productsLoading}
-                  deleteDialogOpen={productsHook.deleteDialogOpen}
-                  setDeleteDialogOpen={productsHook.setDeleteDialogOpen}
-                  productToDelete={productsHook.productToDelete}
-                  handleConfirmDelete={productsHook.handleConfirmDelete}
-                  handleCancelDelete={productsHook.handleCancelDelete}
-                  deleteProductMutation={productsHook.deleteProductMutation}
-                />
-              </TabsContent>
+                {/* Products Tab */}
+                <TabsContent value="products" className="h-full mt-0">
+                  <div className="h-full">
+                    <ProductsTab
+                      products={productsHook.products}
+                      searchQuery={productsHook.searchQuery}
+                      setSearchQuery={productsHook.setSearchQuery}
+                      setIsProductModalOpen={productsHook.setIsProductModalOpen}
+                      getCategoryName={productsHook.getCategoryName}
+                      handleEditProduct={productsHook.handleEditProduct}
+                      handleDeleteProduct={productsHook.handleDeleteProduct}
+                      productsLoading={productsHook.productsLoading}
+                      deleteDialogOpen={productsHook.deleteDialogOpen}
+                      setDeleteDialogOpen={productsHook.setDeleteDialogOpen}
+                      productToDelete={productsHook.productToDelete}
+                      handleConfirmDelete={productsHook.handleConfirmDelete}
+                      handleCancelDelete={productsHook.handleCancelDelete}
+                      deleteProductMutation={productsHook.deleteProductMutation}
+                    />
+                  </div>
+                </TabsContent>
 
-              {/* Categories Tab - YANG DITAMBAHKAN */}
-              <TabsContent value="categories">
-                <CategoriesTab
-                  categories={categoriesHook.categories}
-                  searchCategoryQuery={categoriesHook.searchCategoryQuery}
-                  setSearchCategoryQuery={categoriesHook.setSearchCategoryQuery}
-                  setIsCategoryModalOpen={categoriesHook.setIsCategoryModalOpen}
-                  handleEditCategory={categoriesHook.handleEditCategory}
-                  handleDeleteCategory={categoriesHook.handleDeleteCategory}
-                  categoriesLoading={categoriesHook.categoriesLoading}
-                  deleteCategoryDialogOpen={
-                    categoriesHook.deleteCategoryDialogOpen
-                  }
-                  setDeleteCategoryDialogOpen={
-                    categoriesHook.setDeleteCategoryDialogOpen
-                  }
-                  categoryToDelete={categoriesHook.categoryToDelete}
-                  handleConfirmDeleteCategory={
-                    categoriesHook.handleConfirmDeleteCategory
-                  }
-                  handleCancelDeleteCategory={
-                    categoriesHook.handleCancelDeleteCategory
-                  }
-                  deleteCategoryMutation={categoriesHook.deleteCategoryMutation}
-                  getProductsCountByCategory={
-                    categoriesHook.getProductsCountByCategory
-                  }
-                />
-              </TabsContent>
+                {/* Categories Tab */}
+                <TabsContent value="categories" className="h-full mt-0">
+                  <div className="h-full">
+                    <CategoriesTab
+                      categories={categoriesHook.categories}
+                      searchCategoryQuery={categoriesHook.searchCategoryQuery}
+                      setSearchCategoryQuery={
+                        categoriesHook.setSearchCategoryQuery
+                      }
+                      setIsCategoryModalOpen={
+                        categoriesHook.setIsCategoryModalOpen
+                      }
+                      handleEditCategory={categoriesHook.handleEditCategory}
+                      handleDeleteCategory={categoriesHook.handleDeleteCategory}
+                      categoriesLoading={categoriesHook.categoriesLoading}
+                      deleteCategoryDialogOpen={
+                        categoriesHook.deleteCategoryDialogOpen
+                      }
+                      setDeleteCategoryDialogOpen={
+                        categoriesHook.setDeleteCategoryDialogOpen
+                      }
+                      categoryToDelete={categoriesHook.categoryToDelete}
+                      handleConfirmDeleteCategory={
+                        categoriesHook.handleConfirmDeleteCategory
+                      }
+                      handleCancelDeleteCategory={
+                        categoriesHook.handleCancelDeleteCategory
+                      }
+                      deleteCategoryMutation={
+                        categoriesHook.deleteCategoryMutation
+                      }
+                      getProductsCountByCategory={
+                        categoriesHook.getProductsCountByCategory
+                      }
+                    />
+                  </div>
+                </TabsContent>
 
-              {/* Orders Tab */}
-              <TabsContent value="orders">
-                <OrdersTab
-                  orders={ordersHook.orders}
-                  orderStatusFilter={ordersHook.orderStatusFilter}
-                  setOrderStatusFilter={ordersHook.setOrderStatusFilter}
-                  getStatusBadge={ordersHook.getStatusBadge}
-                  settlementRevenue={analytics.settlementRevenue}
-                  getOrdersByStatus={ordersHook.getOrdersByStatus}
-                  handleViewOrder={ordersHook.handleViewOrder}
-                  handleStatusChange={ordersHook.handleStatusChange}
-                  ordersLoading={ordersHook.ordersLoading}
-                  updateOrderStatusMutation={
-                    ordersHook.updateOrderStatusMutation
-                  }
-                />
-              </TabsContent>
+                {/* Orders Tab */}
+                <TabsContent value="orders" className="h-full mt-0">
+                  <div className="h-full">
+                    <OrdersTab
+                      orders={ordersHook.orders}
+                      orderStatusFilter={ordersHook.orderStatusFilter}
+                      setOrderStatusFilter={ordersHook.setOrderStatusFilter}
+                      getStatusBadge={ordersHook.getStatusBadge}
+                      settlementRevenue={analytics.settlementRevenue}
+                      getOrdersByStatus={ordersHook.getOrdersByStatus}
+                      handleViewOrder={ordersHook.handleViewOrder}
+                      handleStatusChange={ordersHook.handleStatusChange}
+                      ordersLoading={ordersHook.ordersLoading}
+                      updateOrderStatusMutation={
+                        ordersHook.updateOrderStatusMutation
+                      }
+                    />
+                  </div>
+                </TabsContent>
 
-              {/* Analytics Tab */}
-              <TabsContent value="analytics">
-                <AnalyticsTab
-                  bestSellingProducts={analytics.bestSellingProducts}
-                  categoryPerformance={analytics.categoryPerformance}
-                  orderStats={analytics.orderStats}
-                  revenueTrends={analytics.revenueTrends}
-                  userGrowth={analytics.userGrowth}
-                  categories={productsHook.categories}
-                  products={productsHook.products}
-                  orders={ordersHook.orders}
-                  users={usersHook.users}
-                />
-              </TabsContent>
-            </Tabs>
+                {/* Analytics Tab */}
+                <TabsContent value="analytics" className="h-full mt-0">
+                  <div className="h-full">
+                    <AnalyticsTab
+                      bestSellingProducts={analytics.bestSellingProducts}
+                      categoryPerformance={analytics.categoryPerformance}
+                      orderStats={analytics.orderStats}
+                      revenueTrends={analytics.revenueTrends}
+                      userGrowth={analytics.userGrowth}
+                      categories={productsHook.categories}
+                      products={productsHook.products}
+                      orders={ordersHook.orders}
+                      users={usersHook.users}
+                    />
+                  </div>
+                </TabsContent>
+              </Tabs>
+            </div>
           </div>
         </main>
       </div>
+
       {/* Modals */}
       <ProductModal
         isProductModalOpen={productsHook.isProductModalOpen}
@@ -265,13 +278,13 @@ export default function DashboardPage() {
         editingProduct={productsHook.editingProduct}
         productForm={productsHook.productForm}
         setProductForm={productsHook.setProductForm}
-        categories={categoriesHook.categories} // GUNAKAN CATEGORIES DARI HOOK CATEGORIES
+        categories={categoriesHook.categories}
         handleImageChange={productsHook.handleImageChange}
         handleSubmitProduct={productsHook.handleSubmitProduct}
         createProductMutation={productsHook.createProductMutation}
         updateProductMutation={productsHook.updateProductMutation}
       />
-      {/* Category Modal - YANG DITAMBAHKAN */}
+
       <CategoryModal
         isCategoryModalOpen={categoriesHook.isCategoryModalOpen}
         handleCategoryModalClose={categoriesHook.handleCategoryModalClose}
