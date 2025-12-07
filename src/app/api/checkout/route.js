@@ -6,7 +6,6 @@ export async function POST(request) {
     const { orderId, grossAmount, items, customerDetails, userId, jwt } =
       await request.json();
 
-    // Validasi input
     if (
       !orderId ||
       !grossAmount ||
@@ -23,7 +22,6 @@ export async function POST(request) {
 
     console.log("🔍 Starting checkout process for order:", orderId);
 
-    // Cek stok untuk semua items (kecuali shipping)
     const stockCheckPromises = items
       .filter((item) => item.category !== "shipping")
       .map(async (item) => {
@@ -69,7 +67,6 @@ export async function POST(request) {
     const stockCheckResults = await Promise.all(stockCheckPromises);
     console.log("✅ Stock check passed:", stockCheckResults);
 
-    // **PERBAIKAN: Gunakan users_permissions_user bukan user**
     const orderPayload = {
       data: {
         order_id: orderId,
@@ -81,7 +78,7 @@ export async function POST(request) {
         customer_phone: customerDetails.phone,
         shipping_address: customerDetails.shipping_address,
         items: items,
-        users_permissions_user: userId, // **INI YANG DIPERBAIKI**
+        users_permissions_user: userId,
         midtrans_transaction_id: null,
         payment_data: {
           payment_type: null,
@@ -119,14 +116,12 @@ export async function POST(request) {
     const orderData = await orderResponse.json();
     console.log("✅ Order created successfully:", orderData);
 
-    // Initialize Snap client
     const snap = new midtransClient.Snap({
       isProduction: process.env.MIDTRANS_IS_PRODUCTION === "true",
       serverKey: process.env.MIDTRANS_SERVER_KEY,
       clientKey: process.env.MIDTRANS_CLIENT_KEY,
     });
 
-    // Prepare transaction parameters
     const parameter = {
       transaction_details: {
         order_id: orderId,

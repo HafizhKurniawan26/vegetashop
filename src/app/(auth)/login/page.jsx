@@ -25,10 +25,8 @@ export default function LoginPage() {
     setIsLoading(true);
 
     try {
-      // Gunakan function dari globalApi
       const data = await globalApi.loginUser(email, password);
 
-      // Simpan ke storage
       localStorage.setItem("jwt", data.jwt);
       localStorage.setItem("user", JSON.stringify(data.user));
       sessionStorage.setItem("jwt", data.jwt);
@@ -55,7 +53,6 @@ export default function LoginPage() {
   return (
     <div className="min-h-screen bg-gray-300 flex items-center justify-center p-4">
       <div className="w-full max-w-md bg-white rounded-2xl shadow-lg p-8">
-        {/* Loading State */}
         {isLoading && (
           <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
             <div className="bg-white p-4 rounded-lg">
@@ -64,7 +61,6 @@ export default function LoginPage() {
           </div>
         )}
 
-        {/* Header */}
         <div className="text-center mb-8">
           <h1 className="text-4xl font-bold text-gray-900 mb-2">
             Welcome back
@@ -74,9 +70,7 @@ export default function LoginPage() {
           </p>
         </div>
 
-        {/* Form */}
         <form className="space-y-6" onSubmit={handleSubmit}>
-          {/* Email Field */}
           <div className="space-y-2">
             <label
               htmlFor="email"
@@ -94,7 +88,6 @@ export default function LoginPage() {
             />
           </div>
 
-          {/* Password Field */}
           <div className="space-y-2">
             <div className="flex items-center justify-between">
               <label
@@ -117,7 +110,6 @@ export default function LoginPage() {
             />
           </div>
 
-          {/* Login Button */}
           <Button
             type="submit"
             disabled={isLoading}
@@ -127,7 +119,6 @@ export default function LoginPage() {
           </Button>
         </form>
 
-        {/* Sign Up Link */}
         <div className="text-center mt-4">
           <p className="text-sm text-gray-600">
             Don't have an account?{" "}
